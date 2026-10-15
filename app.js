@@ -119,7 +119,7 @@ function freqHint() {
   $('#freqHint').textContent = f === 'aleatoria' ? `Cada intervalo al azar entre ${RANDOM_RANGE[0]} y ${RANDOM_RANGE[1]} min`
     : `Un evento cada ~${FREQ[f]} min de media (entre ${FREQ[f] / 2} y ${FREQ[f] * 1.5} min)`;
 }
-function show(scr) { $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
+function show(scr) { document.body.dataset.screen = scr; $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
 function render() {
   if (!S) return show('setup');
   show('race');

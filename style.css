@@ -52,3 +52,10 @@ dialog::backdrop{background:#000c}
 .tramo{background:linear-gradient(#1b3b57,#14402f);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0;color:var(--ice)}
 .tramo b{color:var(--snow)}.tramo .ti{font-size:1.8rem}.tramo small{font-size:.72rem;line-height:1.2;color:var(--txt)}
 .tramo time{color:var(--mut);font-size:.7rem}.tramo.new{border-color:var(--warn);box-shadow:0 0 0 2px var(--warn) inset}
+header{align-items:center;min-height:0;padding:14px 16px 34px}
+h1{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.logo{display:block;height:auto;width:min(62vw,280px);filter:drop-shadow(0 3px 8px #0008);transition:width .3s}
+body[data-screen=race] .logo{width:min(36vw,150px)}
+h1 .name{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--snow);text-shadow:0 1px 4px #000}
+footer{text-align:center;padding:18px 16px 28px;opacity:.8}
+.wrslot{width:150px;height:auto}
