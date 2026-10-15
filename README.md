@@ -1,5 +1,5 @@
 # Eventos · Simulador de rally para Scalextric
-PWA (HTML/CSS/JS sin frameworks) que lanza eventos aleatorios de clima y pinchazos durante una carrera.
+PWA (HTML/CSS/JS sin frameworks) que lanza eventos aleatorios en 3, 4 o 5 tramos simultáneos: nevadas (harina) suave/moderada/intensa y pinchazos («Pinchazo lento» o «Reventón», ponderados por intensidad: lento 80 % suave, 55 % moderada, 25 % intensa, 50 % aleatoria). Los eventos solo se anuncian, sin duración.
 En vivo: https://blancolang-ai.github.io/eventos/
 
 ## Frecuencias (intervalo medio entre eventos)

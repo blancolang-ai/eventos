@@ -6,14 +6,8 @@ const FREQ = { suave: 45, media: 25, severa: 12 };
 const RANDOM_RANGE = [8, 50]; // Aleatoria: intervalo uniforme entre 8 y 50 min
 const FIRST_FACTOR = 0.5;     // el primer evento llega antes (media × U(0.25, 0.75))
 const STORE = 'eventos.race.v1';
-const WEATHER = [
-  { k: 'lluvia', n: 'Lluvia', f: 'f', i: '🌧️' }, { k: 'niebla', n: 'Niebla', f: 'f', i: '🌫️' },
-  { k: 'nevada', n: 'Nevada', f: 'f', i: '🌨️' }, { k: 'hielo', n: 'Hielo', f: 'm', i: '🧊' },
-  { k: 'viento', n: 'Viento', f: 'm', i: '💨' }, { k: 'granizo', n: 'Granizo', f: 'm', i: '🌩️' },
-  { k: 'tormenta', n: 'Tormenta', f: 'f', i: '⛈️' }];
-const INT = { suave: { m: 'suave', f: 'suave' }, moderada: { m: 'moderado', f: 'moderada' }, intensa: { m: 'intenso', f: 'intensa' } };
-const WHEELS = ['delantera izquierda', 'delantera derecha', 'trasera izquierda', 'trasera derecha'];
-
+const SNOW = { suave: 'Nevada suave', moderada: 'Nevada moderada', intensa: 'Nevada intensa' }; // nieve = harina en pista
+const SLOW_P = { suave: 0.8, moderada: 0.55, intensa: 0.25, aleatoria: 0.5 }; // prob. de «Pinchazo lento» frente a «Reventón»
 const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
 function nextInterval(freq, r = Math.random, first = false) {
   let ms = freq === 'aleatoria'
@@ -21,12 +15,19 @@ function nextInterval(freq, r = Math.random, first = false) {
     : FREQ[freq] * (0.5 + r()) * MIN;
   return Math.round(first ? ms * FIRST_FACTOR : ms);
 }
+// Los eventos no tienen duración: solo se anuncian.
 function makeEvent(cfg, r = Math.random) {
+  const tramo = 1 + Math.floor(r() * (cfg.tramos || 3));
   const kind = cfg.type === 'ambos' ? (r() < 0.6 ? 'clima' : 'pinchazos') : cfg.type;
-  if (kind === 'pinchazos') return { kind, icon: '🛞', text: 'Pinchazo rueda ' + pick(WHEELS, r) };
-  const w = pick(WEATHER, r);
-  const lvl = cfg.intensity === 'aleatoria' ? pick(Object.keys(INT), r) : cfg.intensity;
-  return { kind, icon: w.i, text: w.n + ' ' + INT[lvl][w.f], level: lvl };
+  let ev;
+  if (kind === 'pinchazos') {
+    const slow = r() < SLOW_P[cfg.intensity];
+    ev = { kind, icon: slow ? '🛞' : '💥', label: slow ? 'Pinchazo lento' : 'Reventón' };
+  } else {
+    const lvl = cfg.intensity === 'aleatoria' ? pick(Object.keys(SNOW), r) : cfg.intensity;
+    ev = { kind, icon: '❄️', label: SNOW[lvl], level: lvl };
+  }
+  return { ...ev, tramo, text: `Tramo ${tramo}: ${ev.label}` };
 }
 
 // ===== Estado (basado en marcas de tiempo) =====
@@ -119,6 +120,12 @@ function render() {
   $('#current .cicon').textContent = S.finished ? '🏁' : last ? last.icon : '🟢';
   $('#current .ctext').textContent = S.finished ? 'Carrera terminada' : last ? last.text : 'Pista despejada';
   $('#current .ctime').textContent = last && !S.finished ? 'desde ' + fmt(last.at) : '';
+  const n = S.cfg.tramos || 3, tg = $('#tramos');
+  tg.style.gridTemplateColumns = `repeat(${n},1fr)`;
+  tg.innerHTML = Array.from({ length: n }, (_, i) => {
+    const e = S.events.filter(x => x.tramo === i + 1).at(-1);
+    return `<div class="tramo${e && e === last ? ' new' : ''}" data-tramo="${i + 1}"><b>T${i + 1}</b><span class="ti">${e ? e.icon : '🟢'}</span><small>${e ? e.label : 'Despejado'}</small>${e ? `<time>${fmt(e.at)}</time>` : ''}</div>`;
+  }).join('');
   const h = $('#history');
   if (h.childElementCount !== S.events.length) {
     h.innerHTML = '';
@@ -143,7 +150,7 @@ function init() {
     if (ms <= 0) return alert('Indica una duración');
     alarm(); // desbloquea el audio con un gesto del usuario
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(render);
-    startRace({ durationMs: ms, type: segVal('type'), freq: segVal('freq'), intensity: segVal('intensity') });
+    startRace({ durationMs: ms, type: segVal('type'), freq: segVal('freq'), intensity: segVal('intensity'), tramos: +segVal('tramos') });
     render();
   };
   $('#pauseBtn').onclick = () => { S.pausedAt ? resume() : pause(); render(); };

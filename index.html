@@ -21,9 +21,13 @@
     <input id="hours" type="number" min="0" max="48" value="7" inputmode="numeric"><span>h</span>
     <input id="minutes" type="number" min="0" max="59" value="0" inputmode="numeric"><span>min</span>
   </div>
+  <label>Tramos simultáneos</label>
+  <div class="seg tramosel" data-name="tramos">
+    <button data-v="3" class="on">3</button><button data-v="4">4</button><button data-v="5">5</button>
+  </div>
   <label>Tipo de eventos</label>
   <div class="seg" data-name="type">
-    <button data-v="clima">Climatología</button><button data-v="pinchazos">Pinchazos</button><button data-v="ambos" class="on">Ambos</button>
+    <button data-v="clima">Climatología (nieve)</button><button data-v="pinchazos">Pinchazos</button><button data-v="ambos" class="on">Ambos</button>
   </div>
   <label>Frecuencia</label>
   <div class="seg" data-name="freq">
@@ -45,6 +49,7 @@
     <div id="pausedTag" class="paused hidden">EN PAUSA</div>
   </div>
   <div id="current" class="current"><div class="cicon">🟢</div><div class="ctext">Pista despejada</div><div class="ctime"></div></div>
+  <div id="tramos" class="tramos"></div>
   <div class="row btns">
     <button id="pauseBtn" class="primary">Pausa</button>
     <button id="endBtn" class="danger">Finalizar</button>
@@ -58,7 +63,7 @@
 
 <dialog id="help">
   <h2>Ayuda</h2>
-  <p>Eventos simula un rally: durante la carrera lanza al azar eventos de clima (lluvia, niebla, nevada, hielo, viento, granizo, tormenta) y pinchazos.</p>
+  <p>Eventos simula un rally: durante la carrera lanza al azar eventos en los tramos: nevadas (suave, moderada o intensa; la nieve es harina en pista) y pinchazos («Pinchazo lento» o «Reventón»). Cada evento cae en un tramo al azar y solo se anuncia: no tiene duración ni aviso de fin. Con intensidad suave predominan los pinchazos lentos; con intensa, los reventones.</p>
   <p><b>Frecuencia</b> (intervalo medio entre eventos, cada intervalo varía ±50 % al azar):<br>
   Suave ≈ 45 min · Media ≈ 25 min · Severa ≈ 12 min · Aleatoria: cada intervalo entre 8 y 50 min.</p>
   <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). La carrera se guarda: si recargas la página, continúa donde estaba.</p>

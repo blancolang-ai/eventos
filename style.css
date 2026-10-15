@@ -42,3 +42,8 @@ h3{margin:20px 0 8px;text-transform:uppercase;font-size:.95rem;color:var(--mut)}
 dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:16px;max-width:520px}
 dialog::backdrop{background:#000c}
 .note{background:#2a2200;border-left:4px solid var(--yel);padding:8px 10px;border-radius:6px}
+.tramosel button{font-size:2rem;font-weight:800;padding:16px;font-style:italic}
+.tramos{display:grid;gap:6px;margin-bottom:14px}
+.tramo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tramo b{color:var(--yel);font-style:italic}.tramo .ti{font-size:1.6rem}.tramo small{font-size:.72rem;line-height:1.2}
+.tramo time{color:var(--mut);font-size:.7rem}.tramo.new{border-color:var(--yel);background:#2a2200}
