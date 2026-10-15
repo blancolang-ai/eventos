@@ -119,7 +119,7 @@ function render() {
   const last = S.events.at(-1);
   $('#current .cicon').textContent = S.finished ? '🏁' : last ? last.icon : '🟢';
   $('#current .ctext').textContent = S.finished ? 'Carrera terminada' : last ? last.text : 'Pista despejada';
-  $('#current .ctime').textContent = last && !S.finished ? 'desde ' + fmt(last.at) : '';
+  $('#current .ctime').textContent = last && !S.finished ? 'en el minuto ' + fmt(last.at) : '';
   const n = S.cfg.tramos || 3, tg = $('#tramos');
   tg.style.gridTemplateColumns = `repeat(${n},1fr)`;
   tg.innerHTML = Array.from({ length: n }, (_, i) => {
