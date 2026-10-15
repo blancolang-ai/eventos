@@ -87,10 +87,10 @@ test('recargar reanuda la carrera y recupera eventos pendientes', async ({ page 
   await expect(page.locator('#elapsed')).toHaveText('01:10:00');
   expect(await page.locator('#history li').count()).toBeGreaterThan(evs);
 });
-test('la carrera termina al acabar el tiempo y Finalizar vuelve al inicio', async ({ page }) => {
+test('la carrera termina al acabar el tiempo y Finalizar rally vuelve al inicio', async ({ page }) => {
   await start(page, 'media');
   await page.clock.fastForward(2 * H + M);
-  await expect(page.locator('#current .ctext')).toHaveText('Carrera terminada');
+  await expect(page.locator('#current .ctext')).toHaveText('Rally terminado');
   await expect(page.locator('#remaining')).toHaveText('00:00:00');
   await page.click('#endBtn');
   await expect(page.locator('#setup')).toBeVisible();

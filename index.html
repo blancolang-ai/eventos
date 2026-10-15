@@ -3,19 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0d0f14">
-<title>Eventos · Rally Scalextric</title>
+<meta name="theme-color" content="#0f2233">
+<title>Slot Cóbreces - Eventos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><h1>🏁 Eventos</h1><button id="helpBtn" class="ghost" aria-label="Ayuda">?</button></header>
+<header>
+  <svg class="mtn" viewBox="0 0 400 90" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 90L60 30 95 55 150 10 205 60 250 25 300 65 345 20 400 50V90z" fill="#2b4a63"/>
+    <path d="M150 10l-18 20 10-3 8 8 8-8 10 4zM345 20l-15 16 8-2 7 6 7-6 8 3zM60 30l-13 14 7-2 6 5 6-5 7 2z" fill="#eef6fb"/>
+    <path d="M0 90l40-28 30 18 45-34 50 40 40-22 45 26 60-30 50 20 40-12V90z" fill="#183a2c"/>
+    <path d="M0 90q120-30 200-6t200-10V90z" fill="#e8f2f8"/>
+  </svg>
+  <h1>Slot Cóbreces <span>Eventos</span></h1><button id="helpBtn" class="ghost" aria-label="Ayuda">?</button></header>
 
 <main>
 <section id="setup" class="screen">
-  <h2>Nueva carrera</h2>
   <label>Duración estimada</label>
   <div class="row">
     <input id="hours" type="number" min="0" max="48" value="7" inputmode="numeric"><span>h</span>
@@ -38,7 +44,7 @@
   <div class="seg" data-name="intensity">
     <button data-v="suave">Suave</button><button data-v="moderada" class="on">Moderada</button><button data-v="intensa">Intensa</button><button data-v="aleatoria">Aleatoria</button>
   </div>
-  <button id="startBtn" class="primary big">Empezar carrera</button>
+  <button id="startBtn" class="primary big">Comenzar rally</button>
 </section>
 
 <section id="race" class="screen hidden">
@@ -48,11 +54,11 @@
     <div class="tlabel">Transcurrido <span id="elapsed">00:00:00</span></div>
     <div id="pausedTag" class="paused hidden">EN PAUSA</div>
   </div>
-  <div id="current" class="current"><div class="cicon">🟢</div><div class="ctext">Pista despejada</div><div class="ctime"></div></div>
+  <div id="current" class="current"><div class="cicon"></div><div class="ctext">Tramos despejados</div><div class="ctime"></div></div>
   <div id="tramos" class="tramos"></div>
   <div class="row btns">
     <button id="pauseBtn" class="primary">Pausa</button>
-    <button id="endBtn" class="danger">Finalizar</button>
+    <button id="endBtn" class="danger">Finalizar rally</button>
   </div>
   <label class="toggle"><input type="checkbox" id="wakeToggle"> Mantener pantalla encendida</label>
   <button id="notifBtn" class="ghost hidden">Activar notificaciones</button>
@@ -63,10 +69,10 @@
 
 <dialog id="help">
   <h2>Ayuda</h2>
-  <p>Eventos simula un rally: durante la carrera lanza al azar eventos en los tramos: nevadas (suave, moderada o intensa; la nieve es harina en pista) y pinchazos («Pinchazo lento» o «Reventón»). Cada evento cae en un tramo al azar y solo se anuncia: no tiene duración ni aviso de fin. Con intensidad suave predominan los pinchazos lentos; con intensa, los reventones.</p>
+  <p>Eventos simula un rally: durante el rally lanza al azar eventos en los tramos: nevadas (suave, moderada o intensa; la nieve es harina en pista) y pinchazos («Pinchazo lento» o «Reventón»). Cada evento cae en un tramo al azar y solo se anuncia: no tiene duración ni aviso de fin. Con intensidad suave predominan los pinchazos lentos; con intensa, los reventones.</p>
   <p><b>Frecuencia</b> (intervalo medio entre eventos, cada intervalo varía ±50 % al azar):<br>
   Suave ≈ 45 min · Media ≈ 25 min · Severa ≈ 12 min · Aleatoria: cada intervalo entre 8 y 50 min.</p>
-  <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). La carrera se guarda: si recargas la página, continúa donde estaba.</p>
+  <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). El rally se guarda: si recargas la página, continúa donde estaba.</p>
   <p>Cada evento muestra una notificación, suena una alarma y vibra. Activa «Mantener pantalla encendida» para que la pantalla no se apague. Si la app estaba en segundo plano, al volver se muestran los eventos pendientes.</p>
   <p class="note">⚠️ Con el móvil bloqueado durante mucho tiempo, el navegador puede suspender la app y las alertas pueden no llegar a tiempo. Esto requiere un servidor de notificaciones push, que llegará en una versión futura.</p>
   <form method="dialog"><button class="primary">Entendido</button></form>

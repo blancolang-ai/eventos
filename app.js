@@ -22,13 +22,26 @@ function makeEvent(cfg, r = Math.random) {
   let ev;
   if (kind === 'pinchazos') {
     const slow = r() < SLOW_P[cfg.intensity];
-    ev = { kind, icon: slow ? '🛞' : '💥', label: slow ? 'Pinchazo lento' : 'Reventón' };
+    ev = { kind, icon: slow ? 'slow' : 'blowout', label: slow ? 'Pinchazo lento' : 'Reventón' };
   } else {
     const lvl = cfg.intensity === 'aleatoria' ? pick(Object.keys(SNOW), r) : cfg.intensity;
-    ev = { kind, icon: '❄️', label: SNOW[lvl], level: lvl };
+    ev = { kind, icon: 'snow', label: SNOW[lvl], level: lvl };
   }
   return { ...ev, tramo, text: `Tramo ${tramo}: ${ev.label}` };
 }
+
+// ===== Iconos SVG =====
+const SVG = p => `<svg viewBox="0 0 48 48" class="ico" aria-hidden="true">${p}</svg>`;
+const FLAKE = '<g stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"><path d="M24 4v40M6.7 14l34.6 20M6.7 34l34.6-20"/><path d="M18 7l6 5 6-5M18 41l6-5 6 5M5 21l8 0-3-7M43 27l-8 0 3 7M5 27l8 0-3 7M43 21l-8 0 3-7"/></g>';
+const TYRE = '<circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="24" cy="24" r="6" fill="currentColor"/>';
+const ICONS = {
+  snow: SVG(FLAKE),
+  slow: SVG(TYRE + '<path d="M34 36q6 4 10 2" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>'),
+  blowout: SVG(TYRE + '<path d="M38 6l3 7 6-2-4 6 5 4-7 1 1 7-5-5" fill="#ff5a3c"/>'),
+  road: SVG('<path d="M2 38l14-22 8 10 8-14 14 26z" fill="currentColor" opacity=".35"/><path d="M14 46c6-8 22-6 18-16s-12-6-6-14" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="4 4" stroke-linecap="round"/>'),
+  finish: SVG('<path d="M4 40l14-24 8 11 7-11 11 24z" fill="currentColor"/><path d="M14 23l4-7 4 6M29 18l4-2 3 6" fill="#fff"/>')
+};
+const ic = k => ICONS[k] || k;
 
 // ===== Estado (basado en marcas de tiempo) =====
 let S = null;
@@ -78,7 +91,7 @@ async function notify(ev) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification('🏁 ' + ev.text, { body: 'Tiempo de carrera ' + fmt(ev.at), icon: 'icons/icon-192.png',
+    await reg.showNotification('❄ ' + ev.text, { body: 'Tiempo de rally ' + fmt(ev.at), icon: 'icons/icon-192.png',
       badge: 'icons/icon-192.png', tag: 'eventos-rally', renotify: true, requireInteraction: true, vibrate: [400, 150, 400, 150, 800] });
   } catch (e) { /* ignore */ }
 }
@@ -117,21 +130,21 @@ function render() {
   $('#pauseBtn').textContent = S.pausedAt ? 'Reanudar' : 'Pausa';
   $('#pauseBtn').disabled = S.finished;
   const last = S.events.at(-1);
-  $('#current .cicon').textContent = S.finished ? '🏁' : last ? last.icon : '🟢';
-  $('#current .ctext').textContent = S.finished ? 'Carrera terminada' : last ? last.text : 'Pista despejada';
+  $('#current .cicon').innerHTML = ic(S.finished ? 'finish' : last ? last.icon : 'road');
+  $('#current .ctext').textContent = S.finished ? 'Rally terminado' : last ? last.text : 'Tramos despejados';
   $('#current .ctime').textContent = last && !S.finished ? 'en el minuto ' + fmt(last.at) : '';
   const n = S.cfg.tramos || 3, tg = $('#tramos');
   tg.style.gridTemplateColumns = `repeat(${n},1fr)`;
   tg.innerHTML = Array.from({ length: n }, (_, i) => {
     const e = S.events.filter(x => x.tramo === i + 1).at(-1);
-    return `<div class="tramo${e && e === last ? ' new' : ''}" data-tramo="${i + 1}"><b>T${i + 1}</b><span class="ti">${e ? e.icon : '🟢'}</span><small>${e ? e.label : 'Despejado'}</small>${e ? `<time>${fmt(e.at)}</time>` : ''}</div>`;
+    return `<div class="tramo${e && e === last ? ' new' : ''}" data-tramo="${i + 1}"><b>T${i + 1}</b><span class="ti">${ic(e ? e.icon : 'road')}</span><small>${e ? e.label : 'Despejado'}</small>${e ? `<time>${fmt(e.at)}</time>` : ''}</div>`;
   }).join('');
   const h = $('#history');
   if (h.childElementCount !== S.events.length) {
     h.innerHTML = '';
     S.events.slice().reverse().forEach(e => {
       const li = document.createElement('li');
-      li.innerHTML = `<time>${fmt(e.at)}</time><span>${e.icon} ${e.text}</span>`;
+      li.innerHTML = `<time>${fmt(e.at)}</time><span class="hi">${ic(e.icon)}</span><span>${e.text}</span>`;
       h.appendChild(li);
     });
   }
@@ -154,7 +167,7 @@ function init() {
     render();
   };
   $('#pauseBtn').onclick = () => { S.pausedAt ? resume() : pause(); render(); };
-  $('#endBtn').onclick = () => { if (confirm('¿Finalizar la carrera?')) { S = null; save(); render(); } };
+  $('#endBtn').onclick = () => { if (confirm('¿Finalizar el rally?')) { S = null; save(); render(); } };
   $('#wakeToggle').onchange = e => setWake(e.target.checked);
   $('#notifBtn').onclick = () => Notification.requestPermission().then(render);
   $('#helpBtn').onclick = () => $('#help').showModal();
