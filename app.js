@@ -177,7 +177,12 @@ function init() {
   S = load();
   tick();
   setInterval(tick, 1000);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  if ('serviceWorker' in navigator) {
+    // Al activarse un SW nuevo (skipWaiting + clients.claim) recargamos una vez para usar los archivos nuevos.
+    const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+  }
 }
 window.Eventos = { FREQ, RANDOM_RANGE, nextInterval, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
 init();
