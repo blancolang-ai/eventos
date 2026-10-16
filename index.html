@@ -8,6 +8,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Eventos">
 <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
@@ -22,60 +26,65 @@
 
 <main>
 <section id="setup" class="screen">
-  <label>Duración estimada</label>
+  <label for="hours">Duración estimada (máx. 48 h)</label>
   <div class="row">
-    <input id="hours" type="number" min="0" max="48" value="7" inputmode="numeric"><span>h</span>
-    <input id="minutes" type="number" min="0" max="59" value="0" inputmode="numeric"><span>min</span>
+    <input id="hours" type="number" min="0" max="48" step="1" value="7" aria-label="Horas" inputmode="numeric"><span>h</span>
+    <input id="minutes" type="number" min="0" max="59" step="1" value="0" aria-label="Minutos" inputmode="numeric"><span>min</span>
   </div>
-  <label>Tramos simultáneos</label>
-  <div class="seg tramosel" data-name="tramos">
+  <label id="lbl-tramos">Tramos simultáneos</label>
+  <div class="seg tramosel" data-name="tramos" role="group" aria-labelledby="lbl-tramos">
     <button data-v="3" class="on">3</button><button data-v="4">4</button><button data-v="5">5</button>
   </div>
-  <label>Tipo de eventos</label>
-  <div class="seg" data-name="type">
+  <label id="lbl-type">Tipo de eventos</label>
+  <div class="seg" data-name="type" role="group" aria-labelledby="lbl-type">
     <button data-v="clima">Climatología (nieve)</button><button data-v="pinchazos">Pinchazos</button><button data-v="ambos" class="on">Ambos</button>
   </div>
-  <label>Frecuencia</label>
-  <div class="seg" data-name="freq">
+  <label id="lbl-freq">Frecuencia</label>
+  <div class="seg" data-name="freq" role="group" aria-labelledby="lbl-freq">
     <button data-v="baja">Baja</button><button data-v="media" class="on">Media</button><button data-v="alta">Alta</button><button data-v="aleatoria">Aleatoria</button>
   </div>
-  <p class="hint" id="freqHint"></p>
-  <label>Intensidad</label>
-  <div class="seg" data-name="intensity">
+  <p class="hint" id="freqHint" aria-live="polite"></p>
+  <label id="lbl-int">Intensidad</label>
+  <div class="seg" data-name="intensity" role="group" aria-labelledby="lbl-int">
     <button data-v="suave">Suave</button><button data-v="moderada" class="on">Moderada</button><button data-v="intensa">Intensa</button><button data-v="aleatoria">Aleatoria</button>
   </div>
+  <p id="notifStatus" class="note hidden" role="status"></p>
   <button id="startBtn" class="primary big">Comenzar rally</button>
 </section>
 
 <section id="race" class="screen hidden">
+  <div class="racehead"><button id="raceClose" class="ghost" aria-label="Cerrar rally" title="Cerrar rally"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   <div class="timer">
     <div class="tlabel">Restante</div>
     <div id="remaining" class="tbig">00:00:00</div>
     <div class="tlabel">Transcurrido <span id="elapsed">00:00:00</span></div>
     <div id="pausedTag" class="paused hidden">EN PAUSA</div>
   </div>
-  <div id="current" class="current"><div class="cicon"></div><div class="ctext">Tramos despejados</div><div class="ctime"></div></div>
+  <p id="zeroNote" class="note hidden" role="status">Este rally ha salido con 0 eventos: no habrá nevadas ni pinchazos.</p>
+  <div id="current" class="current" role="status" aria-live="assertive" aria-atomic="true"><div class="cicon"></div><div class="ctext">Tramos despejados</div><div class="ctime"></div></div>
   <div id="tramos" class="tramos"></div>
   <div class="row btns">
     <button id="pauseBtn" class="primary">Pausa</button>
     <button id="endBtn" class="danger">Finalizar rally</button>
   </div>
+  <p id="bgWarn" class="note">⚠️ Con el móvil bloqueado o la app en segundo plano, las alertas no llegan a tiempo: aparecen al volver a la app. Mantén la app abierta y activa «Mantener pantalla encendida».</p>
+  <p id="notifStatusRace" class="note hidden" role="status"></p>
   <label class="toggle"><input type="checkbox" id="wakeToggle"> Mantener pantalla encendida</label>
   <button id="notifBtn" class="ghost hidden">Activar notificaciones</button>
-  <h3>Historial</h3>
-  <ol id="history" class="history"></ol>
+  <h3 id="lbl-hist">Historial</h3>
+  <ol id="history" class="history" aria-labelledby="lbl-hist"></ol>
 </section>
 </main>
 
 <footer><img src="assets/logo-wrslot.webp" alt="WRSlot Cantabria" class="wrslot" width="480" height="107"></footer>
-<dialog id="help">
-  <h2>Ayuda</h2>
+<dialog id="help" aria-labelledby="helpTitle">
+  <div class="sethead"><span class="sp"></span><h2 id="helpTitle">Ayuda</h2><button id="helpClose" class="ghost" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   <p>Eventos simula un rally: durante el rally lanza al azar eventos en los tramos: nevadas (suave, moderada o intensa; la nieve es harina en pista) y pinchazos («Pinchazo lento» o «Reventón»). Cada evento cae en un tramo al azar y solo se anuncia: no tiene duración ni aviso de fin. Con intensidad suave predominan los pinchazos lentos; con intensa, los reventones.</p>
   <p><b>Frecuencia</b> (número total de eventos en todo el rally, elegido al azar al empezar; se reparten a lo largo de la duración, nunca justo al principio ni al final; los rangos se cambian en ⚙ Ajustes):<br>
   <span id="freqHelp"></span></p>
   <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). El rally se guarda: si recargas la página, continúa donde estaba.</p>
-  <p>Cada evento muestra una notificación, suena una alarma y vibra. Activa «Mantener pantalla encendida» para que la pantalla no se apague. Si la app estaba en segundo plano, al volver se muestran los eventos pendientes.</p>
-  <p class="note">⚠️ Con el móvil bloqueado durante mucho tiempo, el navegador puede suspender la app y las alertas pueden no llegar a tiempo. Esto requiere un servidor de notificaciones push, que llegará en una versión futura.</p>
+  <p>Cada evento muestra una notificación (si están permitidas), suena una alarma fuerte y el móvil vibra (en Android; iPhone no permite vibrar desde la web). Al pulsar «Comenzar rally» suena una vez para activar el audio. Activa «Mantener pantalla encendida» para que la pantalla no se apague. Si la app estaba en segundo plano, al volver se muestran los eventos pendientes.</p>
+  <p class="note">⚠️ Con el móvil bloqueado durante mucho tiempo, el navegador puede suspender la app y las alertas pueden no llegar a tiempo. Se muestran al volver a abrir la app.</p>
   <form method="dialog"><button class="primary">Entendido</button></form>
 </dialog>
 <dialog id="settings" class="settings" aria-labelledby="setTitle">
@@ -84,7 +93,8 @@
   <div class="setrow"><span>Baja</span><label>mín <input id="set-baja-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-baja-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div><div class="setrow"><span>Media</span><label>mín <input id="set-media-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-media-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div><div class="setrow"><span>Alta</span><label>mín <input id="set-alta-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-alta-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div>
   <p class="hint">«Aleatoria» va del mínimo de Baja al máximo de Alta. Números enteros ≥ 0; el mínimo no puede superar al máximo.</p>
   <p id="setErr" class="err" role="alert"></p>
-  <button id="setReset" class="linkbtn">Restaurar valores por defecto</button>
+  <p class="hint">Además, Baja ≤ Media ≤ Alta tanto en mínimos como en máximos.</p>
+  <button id="setReset" class="linkbtn">Restaurar valores por defecto (pulsa Guardar para aplicar)</button>
   <div class="setactions"><button id="setCancel">Cancelar</button><button id="setSave" class="primary">Guardar</button></div>
 </dialog>
 <script src="app.js?v=11"></script>

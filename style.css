@@ -106,3 +106,11 @@ body{min-height:100dvh}
 .primary{background:#c4301b;border-color:#c4301b}
 dialog{max-height:calc(100dvh - 24px);overflow:auto;width:min(520px,calc(100vw - 24px));box-sizing:border-box}
 #help form button{width:100%}
+/* v12 */
+.racehead{display:flex;justify-content:flex-end;margin:-6px 0 8px}
+.racehead button{width:44px;height:44px;padding:0}
+.sethead .sp{width:44px}
+#help .sethead button{width:44px;height:44px;padding:0;font-size:1.2rem}
+#notifStatus,#notifStatusRace,#bgWarn,#zeroNote{margin:12px 0;font-size:.9rem}
+header{padding-top:max(16px,env(safe-area-inset-top))}
+.hbtns{top:max(12px,env(safe-area-inset-top))}
