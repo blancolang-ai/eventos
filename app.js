@@ -1,19 +1,18 @@
 'use strict';
 // ===== Configuración =====
 const MIN = 60000;
-// Intervalo medio entre eventos (minutos). Cada intervalo real = media × U(0.5, 1.5).
-const FREQ = { suave: 45, media: 25, severa: 12 };
-const RANDOM_RANGE = [8, 50]; // Aleatoria: intervalo uniforme entre 8 y 50 min
-const FIRST_FACTOR = 0.5;     // el primer evento llega antes (media × U(0.25, 0.75))
+// Frecuencia = nº TOTAL de eventos en todo el rally, elegido al azar al empezar (ambos extremos incluidos).
+const FREQ = { baja: [0, 2], media: [1, 3], alta: [2, 4] };
 const STORE = 'eventos.race.v1';
 const SNOW = { suave: 'Nevada suave', moderada: 'Nevada moderada', intensa: 'Nevada intensa' }; // nieve = harina en pista
 const SLOW_P = { suave: 0.8, moderada: 0.55, intensa: 0.25, aleatoria: 0.5 }; // prob. de «Pinchazo lento» frente a «Reventón»
 const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
-function nextInterval(freq, r = Math.random, first = false) {
-  let ms = freq === 'aleatoria'
-    ? (RANDOM_RANGE[0] + r() * (RANDOM_RANGE[1] - RANDOM_RANGE[0])) * MIN
-    : FREQ[freq] * (0.5 + r()) * MIN;
-  return Math.round(first ? ms * FIRST_FACTOR : ms);
+// Calendario de eventos: N al azar según la frecuencia; la duración se divide en N+1 segmentos
+// y cada evento cae con jitter (±40 % de segmento) alrededor de su marca, sin tocar ni el inicio ni el final.
+function schedule(freq, durationMs, r = Math.random) {
+  const [lo, hi] = FREQ[freq] || FREQ.media;
+  const n = lo + Math.floor(r() * (hi - lo + 1)), seg = durationMs / (n + 1);
+  return Array.from({ length: n }, (_, i) => Math.round(seg * (i + 1 + (r() - 0.5) * 0.8)));
 }
 // Los eventos no tienen duración: solo se anuncian.
 function makeEvent(cfg, r = Math.random) {
@@ -53,7 +52,7 @@ function raceElapsed(now = Date.now()) {
 }
 function startRace(cfg, now = Date.now()) {
   S = { cfg, startTs: now, durationMs: cfg.durationMs, pausedTotal: 0, pausedAt: null, events: [],
-        nextAt: nextInterval(cfg.freq, Math.random, true), finished: false };
+        schedule: schedule(cfg.freq, cfg.durationMs), finished: false };
   save();
 }
 function pause(now = Date.now()) { if (S && !S.pausedAt) { S.pausedAt = now; save(); } }
@@ -62,10 +61,11 @@ function resume(now = Date.now()) { if (S && S.pausedAt) { S.pausedTotal += now 
 function catchUp(now = Date.now()) {
   if (!S || S.finished) return [];
   const el = raceElapsed(now), fired = [];
-  while (S.nextAt <= el && S.nextAt < S.durationMs) {
-    const ev = { ...makeEvent(S.cfg), at: S.nextAt, wall: S.startTs + S.nextAt }; // 'at' = tiempo de carrera
+  if (!S.schedule) S.schedule = schedule(S.cfg.freq in FREQ ? S.cfg.freq : 'media', S.durationMs); // rally guardado por una versión anterior
+  while (S.events.length < S.schedule.length && S.schedule[S.events.length] <= el) {
+    const at = S.schedule[S.events.length];
+    const ev = { ...makeEvent(S.cfg), at, wall: S.startTs + at }; // 'at' = tiempo de carrera
     S.events.push(ev); fired.push(ev);
-    S.nextAt += nextInterval(S.cfg.freq);
   }
   if (el >= S.durationMs) S.finished = true;
   if (fired.length || S.finished) save();
@@ -116,8 +116,7 @@ function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return
 const segVal = n => $(`.seg[data-name=${n}] .on`).dataset.v;
 function freqHint() {
   const f = segVal('freq');
-  $('#freqHint').textContent = f === 'aleatoria' ? `Cada intervalo al azar entre ${RANDOM_RANGE[0]} y ${RANDOM_RANGE[1]} min`
-    : `Un evento cada ~${FREQ[f]} min de media (entre ${FREQ[f] / 2} y ${FREQ[f] * 1.5} min)`;
+  $('#freqHint').textContent = `${FREQ[f][0]}–${FREQ[f][1]} eventos en todo el rally, repartidos al azar`;
 }
 function show(scr) { document.body.dataset.screen = scr; $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
 function render() {
@@ -184,5 +183,5 @@ function init() {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
   }
 }
-window.Eventos = { FREQ, RANDOM_RANGE, nextInterval, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
+window.Eventos = { FREQ, schedule, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
 init();

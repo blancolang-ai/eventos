@@ -37,7 +37,7 @@
   </div>
   <label>Frecuencia</label>
   <div class="seg" data-name="freq">
-    <button data-v="suave">Suave</button><button data-v="media" class="on">Media</button><button data-v="severa">Severa</button><button data-v="aleatoria">Aleatoria</button>
+    <button data-v="baja">Baja</button><button data-v="media" class="on">Media</button><button data-v="alta">Alta</button>
   </div>
   <p class="hint" id="freqHint"></p>
   <label>Intensidad</label>
@@ -71,8 +71,8 @@
 <dialog id="help">
   <h2>Ayuda</h2>
   <p>Eventos simula un rally: durante el rally lanza al azar eventos en los tramos: nevadas (suave, moderada o intensa; la nieve es harina en pista) y pinchazos («Pinchazo lento» o «Reventón»). Cada evento cae en un tramo al azar y solo se anuncia: no tiene duración ni aviso de fin. Con intensidad suave predominan los pinchazos lentos; con intensa, los reventones.</p>
-  <p><b>Frecuencia</b> (intervalo medio entre eventos, cada intervalo varía ±50 % al azar):<br>
-  Suave ≈ 45 min · Media ≈ 25 min · Severa ≈ 12 min · Aleatoria: cada intervalo entre 8 y 50 min.</p>
+  <p><b>Frecuencia</b> (número total de eventos en todo el rally, elegido al azar al empezar; se reparten a lo largo de la duración, nunca justo al principio ni al final):<br>
+  Baja: 0–2 eventos en todo el rally · Media: 1–3 eventos · Alta: 2–4 eventos.</p>
   <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). El rally se guarda: si recargas la página, continúa donde estaba.</p>
   <p>Cada evento muestra una notificación, suena una alarma y vibra. Activa «Mantener pantalla encendida» para que la pantalla no se apague. Si la app estaba en segundo plano, al volver se muestran los eventos pendientes.</p>
   <p class="note">⚠️ Con el móvil bloqueado durante mucho tiempo, el navegador puede suspender la app y las alertas pueden no llegar a tiempo. Esto requiere un servidor de notificaciones push, que llegará en una versión futura.</p>
