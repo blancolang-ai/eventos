@@ -1,4 +1,4 @@
-const CACHE = 'eventos-v12';
+const CACHE = 'eventos-v13';
 const ASSETS = ['./','index.html','style.css','app.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','assets/logo-cobreces.webp','assets/logo-wrslot.webp'];
 // Instala saltando la caché HTTP para no guardar archivos antiguos.
 self.addEventListener('install', e => {
