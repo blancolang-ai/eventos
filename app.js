@@ -2,7 +2,15 @@
 // ===== Configuración =====
 const MIN = 60000;
 // Frecuencia = nº TOTAL de eventos en todo el rally, elegido al azar al empezar (ambos extremos incluidos).
-const FREQ = { baja: [0, 2], media: [1, 3], alta: [2, 4] };
+// Los rangos se pueden cambiar en Ajustes (localStorage); «aleatoria» va del mínimo de Baja al máximo de Alta.
+const FREQ_DEFAULT = { baja: [0, 2], media: [1, 3], alta: [2, 4] };
+const FREQ_STORE = 'eventos.freq.v1';
+const LEVELS = ['baja', 'media', 'alta'];
+function validFreq(f) {
+  return !!f && LEVELS.every(k => Array.isArray(f[k]) && f[k].length === 2 && f[k].every(n => Number.isInteger(n) && n >= 0 && n <= 99) && f[k][0] <= f[k][1]);
+}
+let FREQ = (() => { try { const f = JSON.parse(localStorage.getItem(FREQ_STORE)); if (validFreq(f)) return f; } catch {} return structuredClone(FREQ_DEFAULT); })();
+const freqRange = f => f === 'aleatoria' ? [FREQ.baja[0], FREQ.alta[1]] : (FREQ[f] || FREQ.media);
 const STORE = 'eventos.race.v1';
 const SNOW = { suave: 'Nevada suave', moderada: 'Nevada moderada', intensa: 'Nevada intensa' }; // nieve = harina en pista
 const SLOW_P = { suave: 0.8, moderada: 0.55, intensa: 0.25, aleatoria: 0.5 }; // prob. de «Pinchazo lento» frente a «Reventón»
@@ -10,7 +18,7 @@ const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
 // Calendario de eventos: N al azar según la frecuencia; la duración se divide en N+1 segmentos
 // y cada evento cae con jitter (±40 % de segmento) alrededor de su marca, sin tocar ni el inicio ni el final.
 function schedule(freq, durationMs, r = Math.random) {
-  const [lo, hi] = FREQ[freq] || FREQ.media;
+  const [lo, hi] = freqRange(freq);
   const n = lo + Math.floor(r() * (hi - lo + 1)), seg = durationMs / (n + 1);
   return Array.from({ length: n }, (_, i) => Math.round(seg * (i + 1 + (r() - 0.5) * 0.8)));
 }
@@ -61,7 +69,7 @@ function resume(now = Date.now()) { if (S && S.pausedAt) { S.pausedTotal += now 
 function catchUp(now = Date.now()) {
   if (!S || S.finished) return [];
   const el = raceElapsed(now), fired = [];
-  if (!S.schedule) S.schedule = schedule(S.cfg.freq in FREQ ? S.cfg.freq : 'media', S.durationMs); // rally guardado por una versión anterior
+  if (!S.schedule) S.schedule = schedule(S.cfg.freq, S.durationMs); // rally guardado por una versión anterior
   while (S.events.length < S.schedule.length && S.schedule[S.events.length] <= el) {
     const at = S.schedule[S.events.length];
     const ev = { ...makeEvent(S.cfg), at, wall: S.startTs + at }; // 'at' = tiempo de carrera
@@ -116,7 +124,34 @@ function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return
 const segVal = n => $(`.seg[data-name=${n}] .on`).dataset.v;
 function freqHint() {
   const f = segVal('freq');
-  $('#freqHint').textContent = `${FREQ[f][0]}–${FREQ[f][1]} eventos en todo el rally, repartidos al azar`;
+  const [lo, hi] = freqRange(f);
+  $('#freqHint').textContent = `${lo}–${hi} eventos en todo el rally, repartidos al azar`;
+  const L = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+  $('#freqHelp').textContent = LEVELS.map(k => `${L[k]}: ${FREQ[k][0]}–${FREQ[k][1]} eventos en todo el rally`).join(' · ')
+    + ` · Aleatoria: ${freqRange('aleatoria').join('–')} eventos (del mínimo de Baja al máximo de Alta).`;
+}
+// ===== Ajustes =====
+function fillSettings(f) { LEVELS.forEach(k => { $(`#set-${k}-min`).value = f[k][0]; $(`#set-${k}-max`).value = f[k][1]; }); $('#setErr').textContent = ''; }
+function readSettings() {
+  const f = {}, errs = [];
+  for (const k of LEVELS) {
+    const v = ['min', 'max'].map(m => { const s = $(`#set-${k}-${m}`).value.trim(); return /^\d+$/.test(s) ? +s : NaN; });
+    const name = k[0].toUpperCase() + k.slice(1);
+    if (v.some(n => !Number.isInteger(n) || n > 99)) errs.push(`${name}: usa números enteros entre 0 y 99`);
+    else if (v[0] > v[1]) errs.push(`${name}: el mínimo no puede ser mayor que el máximo`);
+    f[k] = v;
+  }
+  return { f, errs };
+}
+function openSettings() {
+  fillSettings(FREQ); $('#settings').showModal();
+  history.pushState({ ajustes: true }, ''); // el botón «Atrás» del navegador/móvil cierra Ajustes
+}
+function closeSettings() { if (history.state && history.state.ajustes) history.back(); else if ($('#settings').open) $('#settings').close(); }
+function saveSettings() {
+  const { f, errs } = readSettings();
+  if (errs.length) { $('#setErr').textContent = errs.join('. ') + '.'; return; }
+  FREQ = f; localStorage.setItem(FREQ_STORE, JSON.stringify(f)); freqHint(); closeSettings();
 }
 function show(scr) { document.body.dataset.screen = scr; $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
 function render() {
@@ -170,6 +205,12 @@ function init() {
   $('#wakeToggle').onchange = e => setWake(e.target.checked);
   $('#notifBtn').onclick = () => Notification.requestPermission().then(render);
   $('#helpBtn').onclick = () => $('#help').showModal();
+  $('#setBtn').onclick = openSettings;
+  $('#setClose').onclick = $('#setBack').onclick = $('#setCancel').onclick = closeSettings;
+  $('#setSave').onclick = saveSettings;
+  $('#setReset').onclick = () => fillSettings(FREQ_DEFAULT);
+  $('#settings').addEventListener('cancel', e => { e.preventDefault(); closeSettings(); }); // tecla Esc
+  window.addEventListener('popstate', () => { if ($('#settings').open) $('#settings').close(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { tick(); if ($('#wakeToggle').checked) setWake(true); }
   });
@@ -183,5 +224,5 @@ function init() {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
   }
 }
-window.Eventos = { FREQ, schedule, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
+window.Eventos = { get FREQ() { return FREQ; }, FREQ_DEFAULT, freqRange, schedule, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
 init();

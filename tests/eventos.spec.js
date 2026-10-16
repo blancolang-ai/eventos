@@ -120,11 +120,62 @@ test('ayuda y pista de frecuencia en español', async ({ page }) => {
   await page.click('.seg[data-name=freq] button[data-v=baja]');
   await expect(page.locator('#freqHint')).toHaveText('0–2 eventos en todo el rally, repartidos al azar');
   await expect(page.locator('#help')).toContainText('Baja: 0–2 eventos en todo el rally');
-  await expect(page.locator('.seg[data-name=freq] button')).toHaveText(['Baja', 'Media', 'Alta']);
+  await expect(page.locator('.seg[data-name=freq] button')).toHaveText(['Baja', 'Media', 'Alta', 'Aleatoria']);
 });
 test('el calendario se precalcula al empezar y respeta la frecuencia', async ({ page }) => {
   await start(page, 'alta');
   const s = await page.evaluate(() => window.Eventos.state.schedule);
   expect(s.length).toBeGreaterThanOrEqual(2); expect(s.length).toBeLessThanOrEqual(4);
   for (const x of s) { expect(x).toBeGreaterThan(0); expect(x).toBeLessThan(2 * H); }
+});
+test('Aleatoria: del mínimo de Baja al máximo de Alta', async ({ page }) => {
+  await page.click('.seg[data-name=freq] button[data-v=aleatoria]');
+  await expect(page.locator('#freqHint')).toHaveText('0–4 eventos en todo el rally, repartidos al azar');
+  const counts = await page.evaluate(() => [...new Set(Array.from({ length: 3000 }, () => window.Eventos.schedule('aleatoria', 3600e3).length))].sort());
+  expect(counts).toEqual([0, 1, 2, 3, 4]);
+});
+test('Ajustes: editar, validar, guardar, persistir y restaurar', async ({ page }) => {
+  await page.click('#setBtn');
+  const dlg = page.locator('#settings');
+  await expect(dlg).toBeVisible();
+  await expect(page.locator('#set-baja-min')).toHaveValue('0');
+  // validación
+  await page.fill('#set-media-min', '5'); await page.fill('#set-media-max', '2');
+  await page.click('#setSave');
+  await expect(page.locator('#setErr')).toContainText('Media: el mínimo no puede ser mayor que el máximo');
+  await page.fill('#set-media-min', '1.5'); await page.click('#setSave');
+  await expect(page.locator('#setErr')).toContainText('enteros');
+  await expect(dlg).toBeVisible();
+  // valores válidos
+  await page.fill('#set-baja-min', '1'); await page.fill('#set-baja-max', '1');
+  await page.fill('#set-media-min', '3'); await page.fill('#set-media-max', '3');
+  await page.fill('#set-alta-min', '6'); await page.fill('#set-alta-max', '8');
+  await page.click('#setSave');
+  await expect(dlg).toBeHidden();
+  await page.click('.seg[data-name=freq] button[data-v=media]');
+  await expect(page.locator('#freqHint')).toHaveText('3–3 eventos en todo el rally, repartidos al azar');
+  await page.click('.seg[data-name=freq] button[data-v=aleatoria]');
+  await expect(page.locator('#freqHint')).toHaveText('1–8 eventos en todo el rally, repartidos al azar');
+  await expect(page.locator('#freqHelp')).toContainText('Baja: 1–1 eventos en todo el rally · Media: 3–3');
+  await page.reload();
+  expect(await page.evaluate(() => window.Eventos.FREQ)).toEqual({ baja: [1, 1], media: [3, 3], alta: [6, 8] });
+  await start(page, 'media');
+  expect(await page.evaluate(() => window.Eventos.state.schedule.length)).toBe(3);
+  await page.click('#endBtn');
+  // restaurar
+  await page.click('#setBtn'); await page.click('#setReset');
+  await expect(page.locator('#set-alta-max')).toHaveValue('4');
+  await page.click('#setSave');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('eventos.freq.v1')))).toEqual({ baja: [0, 2], media: [1, 3], alta: [2, 4] });
+});
+test('Ajustes: cerrar, flecha atrás, botón Atrás del navegador y cancelar no guardan', async ({ page }) => {
+  const dlg = page.locator('#settings');
+  for (const how of ['#setClose', '#setBack', 'history', '#setCancel', 'Escape']) {
+    await page.click('#setBtn'); await expect(dlg).toBeVisible();
+    await page.fill('#set-baja-max', '9');
+    if (how === 'history') await page.goBack(); else if (how === 'Escape') await page.keyboard.press('Escape'); else await page.click(how);
+    await expect(dlg).toBeHidden();
+    await expect(page.locator('#setup')).toBeVisible();
+  }
+  expect(await page.evaluate(() => window.Eventos.FREQ.baja)).toEqual([0, 2]);
 });
