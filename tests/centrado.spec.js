@@ -34,9 +34,9 @@ for (const width of [375, 390, 430, 1280]) test.describe(`${width}px`, () => {
     };
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await check('inicio');
+    await page.click('#setBtn'); await check('ajustes'); await page.click('#setCancel');
     await page.click('#startBtn'); await check('rally');
     await page.click('#pauseBtn'); await check('pausa');
-    await page.click('#setBtn'); await check('ajustes'); await page.click('#setCancel');
     await page.click('#helpBtn'); await check('ayuda');
   });
 });

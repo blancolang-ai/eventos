@@ -10,6 +10,8 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 fi
 git fetch -q origin main
 [ "$(git rev-list --count HEAD..origin/main)" = 0 ] || { echo "origin/main tiene commits que no tienes: haz pull" >&2; exit 1; }
+port=${EVENTOS_PORT:-4317}
+if python3 -c "import socket,sys;s=socket.socket();sys.exit(0 if s.connect_ex(('127.0.0.1',$port))==0 else 1)"; then echo "Puerto $port ocupado: ciérralo para probar esta carpeta" >&2; exit 1; fi
 npx playwright test
 v=$(sed -n "s/.*eventos-v\([0-9][0-9]*\).*/\1/p" sw.js)
 [ -n "$v" ] || { echo "No encuentro la versión en sw.js" >&2; exit 1; }

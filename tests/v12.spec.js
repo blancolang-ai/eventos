@@ -65,12 +65,12 @@ test('Atrás del móvil en el rally pregunta si finalizar', async ({ page }) => 
   await expect.poll(() => n).toBe(2);
   await expect(page.locator('#setup')).toBeVisible();
 });
-test('Atrás con Ayuda/Ajustes abiertos en el rally solo cierra el diálogo', async ({ page }) => {
+test('Atrás con Ayuda abierta en el rally solo cierra el diálogo', async ({ page }) => {
   await start(page);
   let asked = 0; page.on('dialog', d => { asked++; d.dismiss(); });
   await page.click('#helpBtn'); await expect(page.locator('#help')).toBeVisible();
   await page.goBack(); await expect(page.locator('#help')).toBeHidden();
-  await page.click('#setBtn'); await page.goBack(); await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#setBtn')).toBeDisabled();
   await page.waitForTimeout(200);
   expect(asked).toBe(0);
   await expect(page.locator('#race')).toBeVisible();
@@ -80,7 +80,8 @@ test('Ayuda tiene ✕ que cierra', async ({ page }) => {
   await page.click('#helpClose'); await expect(page.locator('#help')).toBeHidden();
   await expect(page.locator('#help')).toHaveAttribute('aria-labelledby', 'helpTitle');
 });
-test('estado de notificaciones: sin permiso / denegado / no soportado / iPhone sin instalar', async ({ browser }) => {
+test('estado de notificaciones: sin permiso / denegado / no soportado / iPhone sin instalar', async ({ browser }, ti) => {
+  test.skip(ti.project.name === 'webkit-iphone13', 'iPhone en Safari sin instalar no tiene notificaciones (cubierto por el aviso de iPhone)');
   const mk = async (init, ua) => { const c = await browser.newContext(ua ? { userAgent: ua, viewport: { width: 390, height: 844 } } : {}); const p = await c.newPage(); if (init) await p.addInitScript(init); await p.goto('/'); return [c, p]; };
   let [c, p] = await mk(() => { Object.defineProperty(Notification, 'permission', { get: () => 'denied' }); });
   await expect(p.locator('#notifStatus')).toContainText('bloqueadas'); await c.close();
@@ -96,7 +97,8 @@ test('aviso en carrera: alertas no llegan con el móvil bloqueado', async ({ pag
   await expect(page.locator('#bgWarn')).toBeVisible();
   await expect(page.locator('#bgWarn')).toContainText('bloqueado');
 });
-test('notificaciones con etiqueta única por evento', async ({ page }) => {
+test('notificaciones con etiqueta única por evento', async ({ page }, ti) => {
+  test.skip(ti.project.name === 'webkit-iphone13', 'iPhone en Safari sin instalar no tiene notificaciones (cubierto por el aviso de iPhone)');
   await page.addInitScript(() => { Object.defineProperty(Notification, 'permission', { get: () => 'granted' }); });
   await page.reload();
   await page.evaluate(async () => { const reg = await navigator.serviceWorker.ready; window.__tags = []; reg.showNotification = (t, o) => { window.__tags.push(o.tag); return Promise.resolve(); }; });

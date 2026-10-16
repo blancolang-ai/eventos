@@ -1,6 +1,7 @@
 'use strict';
 // ===== Configuración =====
 const MIN = 60000;
+const MAX_MS = 48 * 60 * MIN; // duración máxima: exactamente 48:00
 // Frecuencia = nº TOTAL de eventos en todo el rally, elegido al azar al empezar (ambos extremos incluidos).
 // Los rangos se pueden cambiar en Ajustes (localStorage); «aleatoria» va del mínimo de Baja al máximo de Alta.
 const FREQ_DEFAULT = { baja: [0, 2], media: [1, 3], alta: [2, 4] };
@@ -57,8 +58,13 @@ const ic = k => ICONS[k] || ICONS.road; // solo iconos conocidos (los datos guar
 let S = null;
 const save = () => S ? localStorage.setItem(STORE, JSON.stringify(S)) : localStorage.removeItem(STORE);
 function validState(s) {
-  return !!s && typeof s === 'object' && s.cfg && typeof s.cfg === 'object' && [s.startTs, s.durationMs, s.pausedTotal].every(Number.isFinite)
-    && Array.isArray(s.events) && (s.schedule == null || (Array.isArray(s.schedule) && s.schedule.every(Number.isFinite)));
+  const nt = s && s.cfg && s.cfg.tramos;
+  return !!s && typeof s === 'object' && s.cfg && typeof s.cfg === 'object' && [3, 4, 5].includes(nt)
+    && [s.startTs, s.durationMs, s.pausedTotal].every(Number.isFinite) && s.durationMs > 0 && s.durationMs <= MAX_MS && s.pausedTotal >= 0
+    && (s.pausedAt == null || Number.isFinite(s.pausedAt))
+    && Array.isArray(s.events) && s.events.every(e => e && typeof e === 'object' && Number.isFinite(e.at) && e.at >= 0
+      && Number.isInteger(e.tramo) && e.tramo >= 1 && e.tramo <= nt && typeof e.text === 'string' && typeof e.label === 'string')
+    && (s.schedule == null || (Array.isArray(s.schedule) && s.schedule.every(Number.isFinite)));
 }
 const load = () => { try { const s = JSON.parse(localStorage.getItem(STORE)); return validState(s) ? s : null; } catch { return null; } };
 function raceElapsed(now = Date.now()) {
@@ -79,10 +85,10 @@ function catchUp(now = Date.now()) {
   if (!S.schedule) S.schedule = schedule(S.cfg.freq, S.durationMs); // rally guardado por una versión anterior
   while (S.events.length < S.schedule.length && S.schedule[S.events.length] <= el) {
     const at = S.schedule[S.events.length];
-    const ev = { ...makeEvent(S.cfg), at, wall: S.startTs + S.pausedTotal + at }; // 'at' = tiempo de carrera; 'wall' ≈ hora real (descontando pausas)
+    const ev = { ...makeEvent(S.cfg), at }; // 'at' = tiempo de carrera
     S.events.push(ev); fired.push(ev);
   }
-  if (el >= S.durationMs) { S.finished = true; if (wakeLock) setWake(false); }
+  if (el >= S.durationMs) { S.finished = true; if (wakeLock) setWake(false); $('#wakeToggle').checked = false; }
   if (fired.length || S.finished) save();
   return fired;
 }
@@ -187,8 +193,13 @@ function endRace() {
 }
 const askEnd = () => { if (confirm('¿Finalizar el rally?')) { endRace(); return true; } return false; };
 function show(scr) { document.body.dataset.screen = scr; $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
+// Solo escribe en el DOM si cambia (evita que la región viva se anuncie cada segundo).
+function setText(el, t) { if (el.textContent !== t) el.textContent = t; }
+function setHTML(el, h) { if (el.dataset.h !== h) { el.dataset.h = h; el.innerHTML = h; } }
 function render() {
   renderNotif();
+  const running = !!S;
+  $('#setBtn').disabled = running; $('#setLock').classList.toggle('hidden', !running);
   if (!S) return show('setup');
   show('race');
   const el = Math.min(raceElapsed(), S.durationMs);
@@ -198,16 +209,18 @@ function render() {
   $('#pauseBtn').textContent = S.pausedAt ? 'Reanudar' : 'Pausa';
   $('#pauseBtn').disabled = S.finished;
   const last = S.events.at(-1);
-  $('#current .cicon').innerHTML = ic(S.finished ? 'finish' : last ? last.icon : 'road');
-  $('#current .ctext').textContent = S.finished ? 'Rally terminado' : last ? last.text : 'Tramos despejados';
-  $('#current .ctime').textContent = last && !S.finished ? 'a las ' + fmt(last.at) + ' de rally' : '';
+  setHTML($('#current .cicon'), ic(S.finished ? 'finish' : last ? last.icon : 'road'));
+  setText($('#current .ctext'), S.finished ? 'Rally terminado' : last ? last.text : 'Tramos despejados');
+  setText($('#current .ctime'), last && !S.finished ? 'a las ' + fmt(last.at) + ' de rally' : '');
+  $('#newBtn').classList.toggle('hidden', !S.finished);
+  $('#pauseBtn').classList.toggle('hidden', !!S.finished);
   $('#zeroNote').classList.toggle('hidden', !(S.schedule && S.schedule.length === 0));
   const n = S.cfg.tramos || 3, tg = $('#tramos');
   tg.style.gridTemplateColumns = `repeat(${n},1fr)`;
-  tg.innerHTML = Array.from({ length: n }, (_, i) => {
+  setHTML(tg, Array.from({ length: n }, (_, i) => {
     const e = S.events.filter(x => x.tramo === i + 1).at(-1);
     return `<div class="tramo${e && e === last ? ' new' : ''}" data-tramo="${i + 1}"><b>T${i + 1}</b><span class="ti">${ic(e ? e.icon : 'road')}</span><small>${e ? esc(e.label) : 'Despejado'}</small>${e ? `<time>${fmt(e.at)}</time>` : ''}</div>`;
-  }).join('');
+  }).join(''));
   const h = $('#history');
   if (h.childElementCount !== S.events.length) {
     h.innerHTML = '';
@@ -229,9 +242,14 @@ function init() {
   document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.classList.contains('on')));
   freqHint();
   $('#startBtn').onclick = () => {
-    const num = (s, max) => Math.min(max, Math.max(0, Math.round(+$(s).value) || 0));
-    const ms = (num('#hours', 48) * 60 + num('#minutes', 59)) * MIN;
+    const raw = s => $(s).value.trim(), ok = s => s === '' || /^\d+$/.test(s);
+    const hs = raw('#hours'), ms_ = raw('#minutes');
+    if (!ok(hs) || !ok(ms_)) return alert('Usa horas y minutos enteros (sin decimales)');
+    const h = +hs || 0, m = +ms_ || 0;
+    if (m > 59) return alert('Los minutos deben estar entre 0 y 59');
+    const ms = (h * 60 + m) * MIN;
     if (ms <= 0) return alert('Indica una duración');
+    if (ms > MAX_MS) return alert('La duración máxima es 48 h 00 min');
     alarm(); // desbloquea el audio con un gesto del usuario
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(render);
     startRace({ durationMs: ms, type: segVal('type'), freq: segVal('freq'), intensity: segVal('intensity'), tramos: +segVal('tramos') });
@@ -239,6 +257,7 @@ function init() {
   };
   $('#pauseBtn').onclick = () => { S.pausedAt ? resume() : pause(); render(); };
   $('#endBtn').onclick = $('#raceClose').onclick = askEnd;
+  $('#newBtn').onclick = endRace; // rally terminado: volver a la configuración sin preguntar
   $('#wakeToggle').onchange = e => setWake(e.target.checked);
   $('#notifBtn').onclick = () => Notification.requestPermission().then(render);
   $('#helpClose').onclick = () => $('#help').close();
@@ -248,9 +267,10 @@ function init() {
   const outside = e => { const r = e.currentTarget.getBoundingClientRect(); return e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom); };
   $('#help').addEventListener('click', e => { if (outside(e)) $('#help').close(); });
   $('#settings').addEventListener('click', e => { if (outside(e)) closeSettings(); });
-  const clamp = (el, max) => el.addEventListener('change', () => { const v = Math.round(+el.value); el.value = Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : 0; });
+    // Enteros fuera de rango se ajustan al salir del campo; los decimales no se redondean (se avisa al empezar).
+  const clamp = (el, max) => el.addEventListener('change', () => { const t = el.value.trim(); if (/^-?\d+$/.test(t)) el.value = Math.min(max, Math.max(0, +t)); });
   clamp($('#hours'), 48); clamp($('#minutes'), 59);
-  $('#setBtn').onclick = openSettings;
+  $('#setBtn').onclick = () => { if (!S) openSettings(); };
   $('#setClose').onclick = $('#setBack').onclick = $('#setCancel').onclick = closeSettings;
   $('#setSave').onclick = saveSettings;
   $('#setReset').onclick = () => fillSettings(FREQ_DEFAULT);
@@ -265,9 +285,11 @@ function init() {
     else history.pushState({ race: true }, '');
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') { tick(); if ($('#wakeToggle').checked) setWake(true); }
+    if (document.visibilityState === 'visible') { tick(); if ($('#wakeToggle').checked && S && !S.finished) setWake(true); }
   });
   S = load();
+  // Tras recargar con un diálogo abierto, history.state puede ser «ajustes»/«ayuda» sin diálogo: normalizar.
+  if (history.state && (history.state.ajustes || history.state.ayuda)) history.back(); // vuelve a la entrada anterior (rally o inicio) sin preguntar
   ensureRaceState();
   tick();
   setInterval(tick, 1000);

@@ -28,7 +28,7 @@
 <section id="setup" class="screen">
   <label for="hours">Duración estimada (máx. 48 h)</label>
   <div class="row">
-    <input id="hours" type="number" min="0" max="48" step="1" value="7" aria-label="Horas" inputmode="numeric"><span>h</span>
+    <input id="hours" type="number" min="0" max="48" step="1" pattern="[0-9]*" value="7" aria-label="Horas" inputmode="numeric"><span>h</span>
     <input id="minutes" type="number" min="0" max="59" step="1" value="0" aria-label="Minutos" inputmode="numeric"><span>min</span>
   </div>
   <label id="lbl-tramos">Tramos simultáneos</label>
@@ -53,6 +53,7 @@
 </section>
 
 <section id="race" class="screen hidden">
+  <p id="setLock" class="note hidden" role="status">Ajustes no disponible durante un rally: finalízalo para cambiar las frecuencias.</p>
   <div class="racehead"><button id="raceClose" class="ghost" aria-label="Cerrar rally" title="Cerrar rally"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   <div class="timer">
     <div class="tlabel">Restante</div>
@@ -64,7 +65,8 @@
   <div id="current" class="current" role="status" aria-live="assertive" aria-atomic="true"><div class="cicon"></div><div class="ctext">Tramos despejados</div><div class="ctime"></div></div>
   <div id="tramos" class="tramos"></div>
   <div class="row btns">
-    <button id="pauseBtn" class="primary">Pausa</button>
+    <button id="pauseBtn" class="secondary">Pausa</button>
+    <button id="newBtn" class="secondary hidden">Nuevo rally</button>
     <button id="endBtn" class="danger">Finalizar rally</button>
   </div>
   <p id="bgWarn" class="note">⚠️ Con el móvil bloqueado o la app en segundo plano, las alertas no llegan a tiempo: aparecen al volver a la app. Mantén la app abierta y activa «Mantener pantalla encendida».</p>

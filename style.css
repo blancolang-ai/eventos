@@ -17,7 +17,7 @@ input[type=number]{width:80px;padding:12px;font-size:1.3rem;background:var(--car
 button{font:inherit;padding:12px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt);cursor:pointer}
 .seg button.on{background:var(--snow);color:#0f2233;border-color:var(--ice);font-weight:700;box-shadow:0 0 0 2px var(--ice) inset}
 .primary{background:#d93a24;border-color:#d93a24;font-weight:700}
-.danger{background:#2a3c4d;border-color:#46637d}
+.danger{background:#d93a24;border-color:#d93a24;font-weight:700}.secondary{background:#2a3c4d;border-color:#46637d}
 .ghost{background:#0f223388;border-color:#ffffff44}
 .big{width:100%;margin-top:24px;padding:18px;font-size:1.2rem;text-transform:uppercase;letter-spacing:.05em}
 .hint{color:var(--mut);font-size:.85rem;margin:6px 0 0}
@@ -103,7 +103,7 @@ button:disabled{opacity:.5;cursor:default}
 #setReset{display:flex;margin:0 auto}
 .setactions button{width:100%}
 body{min-height:100dvh}
-.primary{background:#c4301b;border-color:#c4301b}
+.primary,.danger{background:#c4301b;border-color:#c4301b}
 dialog{max-height:calc(100dvh - 24px);overflow:auto;width:min(520px,calc(100vw - 24px));box-sizing:border-box}
 #help form button{width:100%}
 /* v12 */

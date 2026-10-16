@@ -12,10 +12,10 @@ Al empezar se sortea el número total de eventos (extremos incluidos) y se repar
 | Alta | 2–4 |
 | Aleatoria | del mínimo de Baja al máximo de Alta (0–4) |
 
-Los rangos se editan en ⚙ Ajustes (enteros 0–99, mín ≤ máx y Baja ≤ Media ≤ Alta en mínimos y máximos). Si sale 0, la app lo indica. Cada evento indica su tramo. La intensidad (Suave/Moderada/Intensa/Aleatoria) es un ajuste aparte. Los tiempos se calculan con marcas de tiempo, la pausa los congela y el estado se guarda en localStorage.
+Los rangos se editan en ⚙ Ajustes, solo sin rally en marcha (enteros 0–99, mín ≤ máx y Baja ≤ Media ≤ Alta en mínimos y máximos). Si sale 0, la app lo indica. Cada evento indica su tramo. La intensidad (Suave/Moderada/Intensa/Aleatoria) es un ajuste aparte. Los tiempos se calculan con marcas de tiempo, la pausa los congela y el estado se guarda en localStorage (se valida al cargar). Duración máxima 48 h 00 min, en horas y minutos enteros. Al terminar, «Nuevo rally» vuelve a la configuración.
 
 ## Desarrollo
-`npm i && npx playwright install chromium && npx playwright test`
-Desplegar: `./deploy.sh` (comprueba rama `main` y árbol limpio, ejecuta las pruebas, sube la versión en `sw.js`/`index.html` y hace commit solo de esos archivos y push).
+`npm i && npx playwright install chromium webkit && npx playwright test` (Chromium Pixel 7, WebKit iPhone 13 y WebKit escritorio; servidor propio en el puerto 4317, nunca reutiliza uno existente). Contra la web publicada: `EVENTOS_URL=https://blancolang-ai.github.io/eventos/ npx playwright test`.
+Desplegar: `./deploy.sh` (comprueba rama `main` y árbol limpio, comprueba que el puerto de pruebas esté libre, ejecuta las pruebas, sube la versión en `sw.js`/`index.html` y hace commit solo de esos archivos y push).
 
 Nota: las alertas con el móvil bloqueado durante mucho tiempo necesitan un servidor push (versión futura).
