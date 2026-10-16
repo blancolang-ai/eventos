@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header>
@@ -18,7 +18,7 @@
     <path d="M0 90l40-28 30 18 45-34 50 40 40-22 45 26 60-30 50 20 40-12V90z" fill="#183a2c"/>
     <path d="M0 90q120-30 200-6t200-10V90z" fill="#e8f2f8"/>
   </svg>
-  <h1><img class="logo" src="assets/logo-cobreces.webp" alt="Slot Cóbreces - Eventos" width="720" height="366"></h1><div class="hbtns"><button id="setBtn" class="ghost" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.5 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1L11 21h4l.4-2.7a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button><button id="helpBtn" class="ghost" aria-label="Ayuda">?</button></div></header>
+  <h1><img class="logo" src="assets/logo-cobreces.webp" alt="Slot Cóbreces - Eventos" width="720" height="366"></h1><div class="hbtns"><button id="setBtn" class="ghost" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.3 7.3 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.3 7.3 0 0 0-1.7 1l-2.5-1-2 3.5L6.5 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.3 7.3 0 0 0 1.7 1L11 21h4l.4-2.7a7.3 7.3 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button><button id="helpBtn" class="ghost" aria-label="Ayuda" title="Ayuda"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8.5 8.5a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.2-1.5 2.3v.5M12 19v.01" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></header>
 
 <main>
 <section id="setup" class="screen">
@@ -79,7 +79,7 @@
   <form method="dialog"><button class="primary">Entendido</button></form>
 </dialog>
 <dialog id="settings" class="settings" aria-labelledby="setTitle">
-  <div class="sethead"><button id="setBack" class="ghost" aria-label="Atrás">←</button><h2 id="setTitle">Ajustes</h2><button id="setClose" class="ghost" aria-label="Cerrar">✕</button></div>
+  <div class="sethead"><button id="setBack" class="ghost" aria-label="Atrás"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><h2 id="setTitle">Ajustes</h2><button id="setClose" class="ghost" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   <h3>Frecuencia: nº de eventos en todo el rally</h3>
   <div class="setrow"><span>Baja</span><label>mín <input id="set-baja-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-baja-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div><div class="setrow"><span>Media</span><label>mín <input id="set-media-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-media-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div><div class="setrow"><span>Alta</span><label>mín <input id="set-alta-min" type="number" min="0" max="99" step="1" inputmode="numeric"></label><label>máx <input id="set-alta-max" type="number" min="0" max="99" step="1" inputmode="numeric"></label></div>
   <p class="hint">«Aleatoria» va del mínimo de Baja al máximo de Alta. Números enteros ≥ 0; el mínimo no puede superar al máximo.</p>
@@ -87,6 +87,6 @@
   <button id="setReset" class="linkbtn">Restaurar valores por defecto</button>
   <div class="setactions"><button id="setCancel">Cancelar</button><button id="setSave" class="primary">Guardar</button></div>
 </dialog>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

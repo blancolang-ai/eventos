@@ -99,7 +99,7 @@ async function notify(ev) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification('❄ ' + ev.text, { body: 'Tiempo de rally ' + fmt(ev.at), icon: 'icons/icon-192.png',
+    await reg.showNotification((ev.kind === 'pinchazos' ? '🛞 ' : ev.kind === 'clima' ? '❄ ' : '⚠ ') + ev.text, { body: 'Tiempo de rally ' + fmt(ev.at), icon: 'icons/icon-192.png',
       badge: 'icons/icon-192.png', tag: 'eventos-rally', renotify: true, requireInteraction: true, vibrate: [400, 150, 400, 150, 800] });
   } catch (e) { /* ignore */ }
 }
@@ -193,7 +193,8 @@ function init() {
   }));
   freqHint();
   $('#startBtn').onclick = () => {
-    const ms = ((+$('#hours').value || 0) * 60 + (+$('#minutes').value || 0)) * MIN;
+    const num = (s, max) => Math.min(max, Math.max(0, Math.round(+$(s).value) || 0));
+    const ms = (num('#hours', 48) * 60 + num('#minutes', 59)) * MIN;
     if (ms <= 0) return alert('Indica una duración');
     alarm(); // desbloquea el audio con un gesto del usuario
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(render);
@@ -204,13 +205,20 @@ function init() {
   $('#endBtn').onclick = () => { if (confirm('¿Finalizar el rally?')) { S = null; save(); render(); } };
   $('#wakeToggle').onchange = e => setWake(e.target.checked);
   $('#notifBtn').onclick = () => Notification.requestPermission().then(render);
-  $('#helpBtn').onclick = () => $('#help').showModal();
+  $('#helpBtn').onclick = () => { $('#help').showModal(); history.pushState({ ayuda: true }, ''); };
+  $('#help').addEventListener('close', () => { if (history.state && history.state.ayuda) history.back(); });
+  // clic en el fondo oscuro cierra los diálogos
+  const outside = e => { const r = e.currentTarget.getBoundingClientRect(); return e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom); };
+  $('#help').addEventListener('click', e => { if (outside(e)) $('#help').close(); });
+  $('#settings').addEventListener('click', e => { if (outside(e)) closeSettings(); });
+  const clamp = (el, max) => el.addEventListener('change', () => { const v = Math.round(+el.value); el.value = Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : 0; });
+  clamp($('#hours'), 48); clamp($('#minutes'), 59);
   $('#setBtn').onclick = openSettings;
   $('#setClose').onclick = $('#setBack').onclick = $('#setCancel').onclick = closeSettings;
   $('#setSave').onclick = saveSettings;
   $('#setReset').onclick = () => fillSettings(FREQ_DEFAULT);
   $('#settings').addEventListener('cancel', e => { e.preventDefault(); closeSettings(); }); // tecla Esc
-  window.addEventListener('popstate', () => { if ($('#settings').open) $('#settings').close(); });
+  window.addEventListener('popstate', () => { for (const d of ['#settings', '#help']) if ($(d).open) $(d).close(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { tick(); if ($('#wakeToggle').checked) setWake(true); }
   });

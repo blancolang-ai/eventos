@@ -83,3 +83,26 @@ body[data-screen=race] .logo{width:min(40%,170px)}
 .err{color:var(--alert);font-weight:700;min-height:1.2em;margin:8px 0}
 .linkbtn{background:none;border:none;color:var(--ice);text-decoration:underline;padding:6px 0}
 .setactions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+/* v11: centrado exacto del texto de todos los botones */
+button{display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;min-height:44px;overflow-wrap:anywhere;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:3px solid var(--ice);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
+.seg button{min-width:0;padding:10px 4px;min-height:48px}
+.seg[data-name=freq],.seg[data-name=intensity]{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:440px){.seg[data-name=freq],.seg[data-name=intensity]{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.seg[data-name=type] button{font-size:.95rem}
+.tramosel button{padding:12px 4px;line-height:1}
+/* letter-spacing deja un hueco tras la última letra: lo compensamos con text-indent del mismo valor */
+.big{text-indent:.05em}
+.paused{text-indent:.2em}
+.tlabel{text-indent:.08em}
+.hbtns .ghost{width:44px;height:44px;padding:0;font-size:1.25rem;font-weight:700;line-height:1}
+.sethead button{line-height:1}
+.linkbtn{min-height:44px;padding:6px 0;justify-content:flex-start}
+#setReset{display:flex;margin:0 auto}
+.setactions button{width:100%}
+body{min-height:100dvh}
+.primary{background:#c4301b;border-color:#c4301b}
+dialog{max-height:calc(100dvh - 24px);overflow:auto;width:min(520px,calc(100vw - 24px));box-sizing:border-box}
+#help form button{width:100%}
