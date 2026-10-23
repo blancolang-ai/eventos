@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const M = 60e3;
 test.beforeEach(async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-15T10:00:00') });
-  await page.goto('/');
+  await page.goto('./');
   await page.clock.pauseAt(new Date('2026-10-15T10:00:02'));
 });
 async function start(page, freq = 'alta', sched) {
@@ -82,7 +82,7 @@ test('Ayuda tiene ✕ que cierra', async ({ page }) => {
 });
 test('estado de notificaciones: sin permiso / denegado / no soportado / iPhone sin instalar', async ({ browser }, ti) => {
   test.skip(ti.project.name === 'webkit-iphone13', 'iPhone en Safari sin instalar no tiene notificaciones (cubierto por el aviso de iPhone)');
-  const mk = async (init, ua) => { const c = await browser.newContext(ua ? { userAgent: ua, viewport: { width: 390, height: 844 } } : {}); const p = await c.newPage(); if (init) await p.addInitScript(init); await p.goto('/'); return [c, p]; };
+  const mk = async (init, ua) => { const c = await browser.newContext(ua ? { userAgent: ua, viewport: { width: 390, height: 844 } } : {}); const p = await c.newPage(); if (init) await p.addInitScript(init); await p.goto('./'); return [c, p]; };
   let [c, p] = await mk(() => { Object.defineProperty(Notification, 'permission', { get: () => 'denied' }); });
   await expect(p.locator('#notifStatus')).toContainText('bloqueadas'); await c.close();
   [c, p] = await mk(() => { delete window.Notification; });
@@ -130,14 +130,14 @@ test('accesibilidad: grupos, aria-pressed y región viva', async ({ page }) => {
 });
 test('service worker solo borra sus propias cachés', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('otra-app-v1'); await caches.open('eventos-v1'); });
-  const sw = await (await page.request.get('/sw.js')).text();
+  const sw = await (await page.request.get('sw.js')).text();
   const v = sw.match(/'eventos-v(\d+\.\d+\.\d+)'/)[1]; const [ma, mi] = v.split('.').map(Number); expect(ma > 1 || mi >= 13).toBe(true);
   expect(sw).toContain("k.startsWith('eventos-')");
   await page.evaluate(() => navigator.serviceWorker.ready);
   // forzar una activación nueva en contexto limpio no es trivial; se comprueba la lógica directamente
   const left = await page.evaluate(async () => { const CACHE = 'eventos-v99'; const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('eventos-') && k !== CACHE).map(k => caches.delete(k))); return caches.keys(); });
   expect(left).toContain('otra-app-v1'); expect(left).not.toContain('eventos-v1');
-  const html = await (await page.request.get('/')).text();
+  const html = await (await page.request.get('./')).text();
   expect(html).toContain('app.js?v=' + v); expect(html).toContain('style.css?v=' + v); expect(html).toContain('name="app-version" content="' + v + '"'); // versión coherente en SW e index
 });
 test('texto del evento actual', async ({ page }) => {
@@ -148,7 +148,7 @@ test('texto del evento actual', async ({ page }) => {
 for (const [w, h] of [[390, 844], [1280, 800]]) test(`layout ${w}x${h} sin desbordes y sin errores de consola`, async ({ browser }) => {
   const c = await browser.newContext({ viewport: { width: w, height: h } }); const p = await c.newPage(); const errs = [];
   p.on('console', m => m.type() === 'error' && errs.push(m.text())); p.on('pageerror', e => errs.push(e.message));
-  await p.goto('/'); await p.waitForTimeout(300);
+  await p.goto('./'); await p.waitForTimeout(300);
   expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await p.click('#startBtn');
   expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -3,7 +3,7 @@ const H = 3600e3, M = 60e3;
 test.beforeEach(async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-15T10:00:00') });
   page.on('dialog', d => d.accept());
-  await page.goto('/');
+  await page.goto('./');
   await page.clock.pauseAt(new Date('2026-10-15T10:00:02'));
 });
 async function start(page, freq = 'alta', type = 'Ambos', tramos = '3', sched) {

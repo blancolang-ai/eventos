@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const M = 60e3;
 test.beforeEach(async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-15T10:00:00') });
-  await page.goto('/');
+  await page.goto('./');
   await page.clock.pauseAt(new Date('2026-10-15T10:00:02'));
 });
 async function start(page, h = '1', m = '0') {
@@ -91,6 +91,6 @@ test('decisiones: Finalizar rojo, Pausa gris, Ajustes bloqueado en rally, Nuevo 
 test('alarma fuerte y nombres de nieve intactos', async ({ page }) => {
   const labels = await page.evaluate(() => [...new Set(Array.from({ length: 3000 }, (_, i) => window.Eventos.makeEvent({ tramos: 3, type: 'clima', intensity: ['suave', 'moderada', 'intensa'][i % 3] }).label))].sort());
   expect(labels).toEqual(['Nevada intensa', 'Nevada moderada', 'Nevada suave']);
-  const src = await (await page.request.get('/app.js')).text();
+  const src = await (await page.request.get('app.js')).text();
   expect(src).toContain('g.gain.value = 0.9');
 });

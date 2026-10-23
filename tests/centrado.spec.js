@@ -23,7 +23,7 @@ const MEASURE = () => [...document.querySelectorAll('button')].filter(b => b.get
 for (const width of [375, 390, 430, 1280]) test.describe(`${width}px`, () => {
   test.use({ viewport: { width, height: 844 }, isMobile: width < 600 });
   test('texto de todos los botones centrado (±1 px) y sin desbordar', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
     const check = async where => {
       for (const m of await page.evaluate(MEASURE)) {
         expect(m.overflow, `${where} ${m.name} desborda`).toBe(false);
@@ -41,7 +41,7 @@ for (const width of [375, 390, 430, 1280]) test.describe(`${width}px`, () => {
   });
 });
 test('Ayuda: el botón Atrás del navegador y el fondo la cierran; duración se limita', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.click('#helpBtn'); await expect(page.locator('#help')).toHaveJSProperty('open', true);
   await page.goBack(); await expect(page.locator('#help')).toHaveJSProperty('open', false);
   await page.click('#helpBtn'); await page.mouse.click(3, 3); await expect(page.locator('#help')).toHaveJSProperty('open', false);
