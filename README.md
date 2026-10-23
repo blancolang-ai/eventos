@@ -14,7 +14,7 @@ Al empezar se sortea el número total de eventos (extremos incluidos) y se repar
 
 Los rangos se editan en ⚙ Ajustes, solo sin rally en marcha (enteros 0–99, mín ≤ máx y Baja ≤ Media ≤ Alta en mínimos y máximos). Si sale 0, la app lo indica. Cada evento indica su tramo. La intensidad (Suave/Moderada/Intensa/Aleatoria) es un ajuste aparte. Los tiempos se calculan con marcas de tiempo, la pausa los congela y el estado se guarda en localStorage (se valida al cargar). Duración máxima 48 h 00 min, en horas y minutos enteros. Al terminar, «Nuevo rally» vuelve a la configuración.
 
-Versión: 1.13.0 (versionado semántico; hasta la v13 se usaba un número entero).
+Versión: 1.14.0 (versionado semántico; hasta la v13 se usaba un número entero).
 
 ## Desarrollo
 `npm i && npx playwright install chromium webkit && npx playwright test` (Chromium Pixel 7, WebKit iPhone 13 y WebKit escritorio; servidor propio en el puerto 4317, nunca reutiliza uno existente). Contra la web publicada: `EVENTOS_URL=https://blancolang-ai.github.io/eventos/ npx playwright test`.
