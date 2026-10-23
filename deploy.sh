@@ -1,7 +1,9 @@
 #!/bin/sh
-# Publica una nueva versión: comprueba, prueba, sube la versión de caché y hace commit SOLO de los archivos de versión.
+# Publica una nueva versión (semver; ./deploy.sh [patch|minor|major], por defecto patch): comprueba, prueba, sube la versión de caché y hace commit SOLO de los archivos de versión.
 # Los cambios de código deben estar ya confirmados (commit) antes de desplegar.
 set -eu
+bump=${1:-patch}
+case "$bump" in patch|minor|major) ;; *) echo "Uso: ./deploy.sh [patch|minor|major]" >&2; exit 1 ;; esac
 cd "$(dirname "$0")"
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" = main ] || { echo "Rama '$branch': despliega desde main" >&2; exit 1; }
@@ -13,15 +15,23 @@ git fetch -q origin main
 port=${EVENTOS_PORT:-4317}
 if python3 -c "import socket,sys;s=socket.socket();sys.exit(0 if s.connect_ex(('127.0.0.1',$port))==0 else 1)"; then echo "Puerto $port ocupado: ciérralo para probar esta carpeta" >&2; exit 1; fi
 npx playwright test
-v=$(sed -n "s/.*eventos-v\([0-9][0-9]*\).*/\1/p" sw.js)
-[ -n "$v" ] || { echo "No encuentro la versión en sw.js" >&2; exit 1; }
-n=$((v+1))
-restore() { git checkout -- sw.js index.html; }
-trap 'echo "Fallo: restauro sw.js e index.html" >&2; restore' EXIT
-sed -i "s/eventos-v$v/eventos-v$n/" sw.js
-sed -i "s/\(style\.css\|app\.js\)?v=[0-9][0-9]*/\1?v=$n/g" index.html
-grep -q "eventos-v$n" sw.js && grep -q "app.js?v=$n" index.html && grep -q "style.css?v=$n" index.html
-git add -- sw.js index.html
+v=$(sed -n "s/.*'eventos-v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)'.*/\1/p" sw.js)
+[ -n "$v" ] || { echo "No encuentro la versión X.Y.Z en sw.js" >&2; exit 1; }
+IFS=. read -r ma mi pa <<EOV
+$v
+EOV
+case "$bump" in
+  major) n="$((ma+1)).0.0" ;;
+  minor) n="$ma.$((mi+1)).0" ;;
+  patch) n="$ma.$mi.$((pa+1))" ;;
+esac
+restore() { git checkout -- sw.js index.html README.md; }
+trap 'echo "Fallo: restauro sw.js, index.html y README.md" >&2; restore' EXIT
+sed -i "s/'eventos-v$v'/'eventos-v$n'/" sw.js
+sed -i "s/\(style\.css\|app\.js\)?v=[0-9.]*\"/\1?v=$n\"/g; s/name=\"app-version\" content=\"[0-9.]*\"/name=\"app-version\" content=\"$n\"/" index.html
+sed -i "s/^Versión: [0-9.]* /Versión: $n /" README.md
+grep -q "'eventos-v$n'" sw.js && grep -q "app.js?v=$n\"" index.html && grep -q "style.css?v=$n\"" index.html && grep -q "content=\"$n\"" index.html && grep -q "^Versión: $n " README.md
+git add -- sw.js index.html README.md
 git commit -q -m "Deploy v$n"
 trap - EXIT
 git push origin main

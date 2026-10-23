@@ -131,14 +131,14 @@ test('accesibilidad: grupos, aria-pressed y región viva', async ({ page }) => {
 test('service worker solo borra sus propias cachés', async ({ page }) => {
   await page.evaluate(async () => { await caches.open('otra-app-v1'); await caches.open('eventos-v1'); });
   const sw = await (await page.request.get('/sw.js')).text();
-  const v = sw.match(/'eventos-v(\d+)'/)[1]; expect(+v).toBeGreaterThanOrEqual(11);
+  const v = sw.match(/'eventos-v(\d+\.\d+\.\d+)'/)[1]; const [ma, mi] = v.split('.').map(Number); expect(ma > 1 || mi >= 13).toBe(true);
   expect(sw).toContain("k.startsWith('eventos-')");
   await page.evaluate(() => navigator.serviceWorker.ready);
   // forzar una activación nueva en contexto limpio no es trivial; se comprueba la lógica directamente
   const left = await page.evaluate(async () => { const CACHE = 'eventos-v99'; const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('eventos-') && k !== CACHE).map(k => caches.delete(k))); return caches.keys(); });
   expect(left).toContain('otra-app-v1'); expect(left).not.toContain('eventos-v1');
   const html = await (await page.request.get('/')).text();
-  expect(html).toContain('app.js?v=' + v); expect(html).toContain('style.css?v=' + v); // versión coherente en SW e index
+  expect(html).toContain('app.js?v=' + v); expect(html).toContain('style.css?v=' + v); expect(html).toContain('name="app-version" content="' + v + '"'); // versión coherente en SW e index
 });
 test('texto del evento actual', async ({ page }) => {
   await start(page, 'alta', [5]);
