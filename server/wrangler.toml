@@ -1,0 +1,16 @@
+name = "eventos-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://blancolang-ai.github.io"
+# VAPID_PUBLIC y VAPID_SUBJECT van como variables; VAPID_PRIVATE SOLO como secreto (wrangler secret put VAPID_PRIVATE).
+
+[[durable_objects.bindings]]
+name = "RALLY"
+class_name = "Rally"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Rally"]
