@@ -146,7 +146,8 @@ async function setWake(on) {
 
 // ===== 2.0.0: avisos push y rally compartido (servidor Cloudflare) =====
 // Dirección del servidor: <meta name="push-api"> (vacía = sin servidor, todo local como en 1.x). Las pruebas la cambian con localStorage.
-const API = (localStorage.getItem('eventos.api') || (document.querySelector('meta[name=push-api]') || {}).content || '').replace(/\/$/, '');
+const API_LS = localStorage.getItem('eventos.api');
+const API = (API_LS === 'off' ? '' : (API_LS || (document.querySelector('meta[name=push-api]') || {}).content || '')).replace(/\/$/, '');
 const PUSH_STORE = 'eventos.push.v1', FIN_STORE = 'eventos.finish.v1';
 const pushOn = () => localStorage.getItem(PUSH_STORE) !== '0'; // «Avisos con pantalla bloqueada»: activado por defecto
 const fmtCode = c => c ? c.slice(0, 3) + '-' + c.slice(3) : '';

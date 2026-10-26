@@ -3,7 +3,7 @@ const { devices } = require('@playwright/test');
 const PORT = +process.env.EVENTOS_PORT || 4317;
 const API_PORT = +process.env.EVENTOS_API_PORT || 8795, NODE22 = process.env.NODE22 || process.execPath;
 const base = process.env.EVENTOS_URL || `http://localhost:${PORT}`;
-module.exports = { testDir: 'tests', use: { baseURL: base },
+module.exports = { testDir: 'tests', use: { baseURL: base, storageState: { cookies: [], origins: [{ origin: base.replace(/\/$/, ''), localStorage: [{ name: 'eventos.api', value: 'off' }] }] } },
   projects: [
     { name: 'chromium-pixel7', use: { ...devices['Pixel 7'] } },
     { name: 'webkit-iphone13', use: { ...devices['iPhone 13'] } },

@@ -153,7 +153,13 @@ test('pantalla de rally con código: sin desbordamiento horizontal y botones vis
   page.on('dialog', d => d.accept()); await page.click('#endBtn');
 });
 
+test('meta push-api apunta al servidor desplegado', async ({ page }) => {
+  await page.goto('/');
+  expect(await page.locator('meta[name=push-api]').getAttribute('content')).toBe('https://eventos-push.blancolang.workers.dev');
+});
+
 test('sin servidor configurado: todo como en 1.x (sin código ni botón de unirse)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('eventos.api', 'off'));
   await page.goto('/');
   await expect(page.locator('#joinBtn')).toBeHidden(); await expect(page.locator('#pushRow')).toBeHidden();
   await page.click('#startBtn'); await expect(page.locator('#codeBox')).toBeHidden(); await expect(page.locator('#syncNote')).toBeHidden();
