@@ -117,3 +117,13 @@ dialog{max-height:calc(100dvh - 24px);overflow:auto;width:min(520px,calc(100vw -
 #notifStatus,#notifStatusRace,#bgWarn,#zeroNote{margin:12px 0;font-size:.9rem}
 header{padding-top:max(16px,env(safe-area-inset-top))}
 .hbtns{top:max(12px,env(safe-area-inset-top))}
+/* 2.0.0: código de rally y avisos push */
+.codebox{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;background:#14324a;border:1px solid #2f5878;border-radius:10px;padding:10px 12px;margin:8px 0}
+.codebox b{font-size:1.5rem;letter-spacing:.12em;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap}
+.codebox small:empty{display:none}
+.codebox #shareBtn{padding:8px 12px;min-height:44px}
+.okbox{background:#123a26;border-left:4px solid #3fbf7f;padding:8px 10px;border-radius:6px;margin:12px 0;font-size:.9rem}
+#syncNote{margin:12px 0;font-size:.9rem}
+#joinBtn{margin-top:10px}
+.codein{width:100%;font-size:1.6rem;text-align:center;letter-spacing:.15em;text-transform:uppercase;box-sizing:border-box}
+#pushHint{margin-top:4px}

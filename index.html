@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="app-version" content="1.14.0">
+<meta name="app-version" content="2.0.0">
+<!-- Dirección del servidor de avisos (Cloudflare Worker). Vacía = sin avisos push ni rallies compartidos (todo local). -->
+<meta name="push-api" content="https://eventos-push.blancolang.workers.dev">
 <meta name="theme-color" content="#0f2233">
 <title>Slot Cóbreces - Eventos</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -13,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Eventos">
-<link rel="stylesheet" href="style.css?v=1.14.0">
+<link rel="stylesheet" href="style.css?v=2.0.0">
 </head>
 <body>
 <header>
@@ -50,12 +52,17 @@
     <button data-v="suave">Suave</button><button data-v="moderada" class="on">Moderada</button><button data-v="intensa">Intensa</button><button data-v="aleatoria">Aleatoria</button>
   </div>
   <p id="notifStatus" class="note hidden" role="status"></p>
+  <label class="toggle hidden" id="pushRow"><input type="checkbox" id="pushToggle" checked> Avisos con pantalla bloqueada</label>
+  <p class="hint" id="pushHint">Los eventos llegan como notificación aunque el móvil esté bloqueado (tono normal de notificación; necesita internet al empezar, pausar y reanudar).</p>
   <button id="startBtn" class="primary big">Comenzar rally</button>
+  <button id="joinBtn" class="secondary big hidden">Unirse a un rally con código</button>
 </section>
 
 <section id="race" class="screen hidden">
   <p id="setLock" class="note hidden" role="status">Ajustes no disponible durante un rally: finalízalo para cambiar las frecuencias.</p>
   <div class="racehead"><button id="raceClose" class="ghost" aria-label="Cerrar rally" title="Cerrar rally"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  <div id="codeBox" class="codebox hidden"><div><span id="codeHost">Código del rally</span><span id="codeGuest" class="hidden">Siguiendo el rally</span> <b id="codeVal"></b></div>
+    <button id="shareBtn" class="ghost">Compartir código</button></div>
   <div class="timer">
     <div class="tlabel">Restante</div>
     <div id="remaining" class="tbig">00:00:00</div>
@@ -70,9 +77,12 @@
     <button id="newBtn" class="secondary hidden">Nuevo rally</button>
     <button id="endBtn" class="danger">Finalizar rally</button>
   </div>
+  <p id="syncNote" class="note hidden" role="status"></p>
+  <p id="pushOk" class="okbox hidden">🔔 Avisos con pantalla bloqueada activos: los eventos llegarán aunque el móvil esté bloqueado (con el tono normal de notificación). Con la app abierta suena además la alarma fuerte.</p>
   <p id="bgWarn" class="note">⚠️ Con el móvil bloqueado o la app en segundo plano, las alertas no llegan a tiempo: aparecen al volver a la app. Mantén la app abierta y activa «Mantener pantalla encendida».</p>
   <p id="notifStatusRace" class="note hidden" role="status"></p>
   <label class="toggle"><input type="checkbox" id="wakeToggle"> Mantener pantalla encendida</label>
+  <label class="toggle hidden" id="pushRowRace"><input type="checkbox" id="pushToggleRace" checked> Avisos con pantalla bloqueada</label>
   <button id="notifBtn" class="ghost hidden">Activar notificaciones</button>
   <h3 id="lbl-hist">Historial</h3>
   <ol id="history" class="history" aria-labelledby="lbl-hist"></ol>
@@ -88,7 +98,18 @@
   <p><b>Pausa</b> congela el tiempo y los eventos (ideal para comer). El rally se guarda: si recargas la página, continúa donde estaba.</p>
   <p>Cada evento muestra una notificación (si están permitidas), suena una alarma fuerte y el móvil vibra (en Android; iPhone no permite vibrar desde la web). Al pulsar «Comenzar rally» suena una vez para activar el audio. Activa «Mantener pantalla encendida» para que la pantalla no se apague. Si la app estaba en segundo plano, al volver se muestran los eventos pendientes.</p>
   <p class="note">⚠️ Con el móvil bloqueado durante mucho tiempo, el navegador puede suspender la app y las alertas pueden no llegar a tiempo. Se muestran al volver a abrir la app.</p>
+  <p><b>Avisos con pantalla bloqueada y rallies compartidos</b>: al empezar, el rally se envía a un pequeño servidor que manda cada evento como notificación aunque el móvil esté bloqueado o la app cerrada (en iPhone, con la app añadida a la pantalla de inicio; suena el tono normal de notificación). Se muestra un código de 6 caracteres: en otros móviles u ordenadores pulsa «Unirse a un rally con código» para ver el mismo rally. Solo el dispositivo que lo creó puede pausar o finalizar. Hace falta internet al empezar, pausar y reanudar; sin conexión, la app sigue funcionando con la alarma local. No se guardan nombres ni datos personales y todo se borra al terminar el rally (o a las 24 h).</p>
   <form method="dialog"><button class="primary">Entendido</button></form>
+</dialog>
+<dialog id="join" class="settings" aria-labelledby="joinTitle">
+  <div class="sethead"><span class="sp"></span><h2 id="joinTitle">Unirse a un rally</h2><button id="joinClose" class="ghost" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  <form id="joinForm">
+    <label for="joinCode">Código del rally (6 caracteres)</label>
+    <input id="joinCode" class="codein" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="7" placeholder="ABC-123" enterkeyhint="go">
+    <p class="hint">Verás el mismo rally (tiempo y eventos) y recibirás los avisos a la vez. Solo el dispositivo que lo creó puede pausarlo o finalizarlo.</p>
+    <p id="joinErr" class="err" role="alert"></p>
+    <div class="setactions"><button type="button" id="joinCancel">Cancelar</button><button id="joinGo" class="primary">Unirse</button></div>
+  </form>
 </dialog>
 <dialog id="settings" class="settings" aria-labelledby="setTitle">
   <div class="sethead"><button id="setBack" class="ghost" aria-label="Atrás"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><h2 id="setTitle">Ajustes</h2><button id="setClose" class="ghost" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
@@ -100,6 +121,6 @@
   <button id="setReset" class="linkbtn">Restaurar valores por defecto (pulsa Guardar para aplicar)</button>
   <div class="setactions"><button id="setCancel">Cancelar</button><button id="setSave" class="primary">Guardar</button></div>
 </dialog>
-<script src="app.js?v=1.14.0"></script>
+<script src="app.js?v=2.0.0"></script>
 </body>
 </html>

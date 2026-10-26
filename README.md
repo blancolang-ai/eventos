@@ -14,10 +14,14 @@ Al empezar se sortea el número total de eventos (extremos incluidos) y se repar
 
 Los rangos se editan en ⚙ Ajustes, solo sin rally en marcha (enteros 0–99, mín ≤ máx y Baja ≤ Media ≤ Alta en mínimos y máximos). Si sale 0, la app lo indica. Cada evento indica su tramo. La intensidad (Suave/Moderada/Intensa/Aleatoria) es un ajuste aparte. Los tiempos se calculan con marcas de tiempo, la pausa los congela y el estado se guarda en localStorage (se valida al cargar). Duración máxima 48 h 00 min, en horas y minutos enteros. Al terminar, «Nuevo rally» vuelve a la configuración.
 
-Versión: 1.14.0 (versionado semántico; hasta la v13 se usaba un número entero).
+Versión: 2.0.0 (versionado semántico; hasta la v13 se usaba un número entero).
 
 ## Desarrollo
 `npm i && npx playwright install chromium webkit && npx playwright test` (Chromium Pixel 7, WebKit iPhone 13 y WebKit escritorio; servidor propio en el puerto 4317, nunca reutiliza uno existente). Contra la web publicada: `EVENTOS_URL=https://blancolang-ai.github.io/eventos/ npx playwright test`.
 Desplegar: `./deploy.sh [patch|minor|major]` (por defecto `patch`; comprueba rama `main` y árbol limpio, comprueba que el puerto de pruebas esté libre, ejecuta las pruebas, sube la versión semántica en `sw.js`/`index.html`/`README.md` y hace commit solo de esos archivos y push).
 
-Nota: las alertas con el móvil bloqueado durante mucho tiempo necesitan un servidor push (versión futura).
+## 2.0.0: avisos push y rallies compartidos
+Servidor en `server/` (Cloudflare Worker + un Durable Object por rally con alarmas; Web Push RFC 8291 + VAPID con WebCrypto, sin dependencias). Endpoints: `GET /vapid`, `POST /rally` (crear), `GET /rally/:código`, `POST /rally/:código/{join,leave,pause,resume,finish}`. Solo el creador (con su token) pausa/reanuda/finaliza. Todo se borra al finalizar, 10 min después del final o a las 24 h. Máx. 10 dispositivos con avisos por rally (límite de CPU del plan gratuito).
+La app usa el servidor indicado en `<meta name="push-api">`; vacío = todo local como en 1.x.
+Pruebas del servidor: `cd server && npm i && npm test` (necesita Node ≥ 22). Las pruebas de Playwright de 2.0 arrancan `wrangler dev` en local (puerto 8795).
+Claves VAPID: `node server/gen-vapid.mjs` crea `server/.dev.vars` (ignorado por git). La privada solo va como secreto de Cloudflare (`wrangler secret put VAPID_PRIVATE`), nunca al repositorio.

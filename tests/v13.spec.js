@@ -20,7 +20,7 @@ test('1: #current no se reescribe si no cambia', async ({ page }) => {
 test('2: la configuración no reutiliza servidores y deploy.sh comprueba el puerto', async () => {
   const fs = require('fs'), path = require('path');
   const cfg = require(path.join(__dirname, '..', 'playwright.config.js'));
-  if (cfg.webServer) { expect(cfg.webServer.reuseExistingServer).toBe(false); expect(cfg.webServer.port).not.toBe(4173); }
+  for (const ws of [].concat(cfg.webServer || [])) { expect(ws.reuseExistingServer).toBe(false); expect(ws.port).not.toBe(4173); } // 2.0.0: varios servidores (web + avisos)
   expect(fs.readFileSync(path.join(__dirname, '..', 'deploy.sh'), 'utf8')).toMatch(/ocupado/);
 });
 test('3: no se vuelve a pedir wake lock tras terminar', async ({ page }) => {

@@ -64,7 +64,10 @@ function validState(s) {
     && (s.pausedAt == null || Number.isFinite(s.pausedAt))
     && Array.isArray(s.events) && s.events.every(e => e && typeof e === 'object' && Number.isFinite(e.at) && e.at >= 0
       && Number.isInteger(e.tramo) && e.tramo >= 1 && e.tramo <= nt && typeof e.text === 'string' && typeof e.label === 'string')
-    && (s.schedule == null || (Array.isArray(s.schedule) && s.schedule.every(Number.isFinite)));
+    && (s.schedule == null || (Array.isArray(s.schedule) && s.schedule.every(Number.isFinite)))
+    && (s.plan == null || (Array.isArray(s.plan) && s.plan.every(e => e && typeof e.id === 'string' && Number.isFinite(e.at) && e.at >= 0
+      && Number.isInteger(e.tramo) && e.tramo >= 1 && e.tramo <= nt && typeof e.text === 'string' && typeof e.label === 'string')))
+    && (s.sync == null || (typeof s.sync === 'object' && ['host', 'guest'].includes(s.sync.role)));
 }
 const load = () => { try { const s = JSON.parse(localStorage.getItem(STORE)); return validState(s) ? s : null; } catch { return null; } };
 function raceElapsed(now = Date.now()) {
@@ -72,8 +75,11 @@ function raceElapsed(now = Date.now()) {
   return now - S.startTs - S.pausedTotal - (S.pausedAt ? now - S.pausedAt : 0);
 }
 function startRace(cfg, now = Date.now()) {
+  const times = (window.__EVENTOS_TEST_TIMES || schedule)(cfg.freq, cfg.durationMs);
+  // 2.0.0: el contenido de cada evento se decide al empezar (para poder enviarlo al servidor de avisos)
+  const plan = times.map((at, i) => ({ id: 'e' + (i + 1), ...makeEvent(cfg), at }));
   S = { cfg, startTs: now, durationMs: cfg.durationMs, pausedTotal: 0, pausedAt: null, events: [],
-        schedule: schedule(cfg.freq, cfg.durationMs), finished: false };
+        schedule: times, plan, finished: false, sync: { role: 'host', status: 'pending' } };
   save();
 }
 function pause(now = Date.now()) { if (S && !S.pausedAt) { S.pausedAt = now; save(); } }
@@ -83,7 +89,12 @@ function catchUp(now = Date.now()) {
   if (!S || S.finished) return [];
   const el = raceElapsed(now), fired = [];
   if (!S.schedule) S.schedule = schedule(S.cfg.freq, S.durationMs); // rally guardado por una versión anterior
-  while (S.events.length < S.schedule.length && S.schedule[S.events.length] <= el) {
+  // el calendario manda: si no coincide con el plan (estado antiguo o editado), se rehace el contenido de los eventos aún no ocurridos
+  if (S.plan && !S.sync?.code && (S.plan.length !== S.schedule.length || S.plan.some((e, i) => e.at !== S.schedule[i])))
+    S.plan = S.schedule.map((at, i) => i < S.events.length ? { ...S.events[i], id: S.events[i].id || 'e' + (i + 1) } : { id: 'e' + (i + 1), ...makeEvent(S.cfg), at });
+  if (S.plan) { // 2.0.0: eventos precalculados (con id para no repetir aviso local + push)
+    while (S.events.length < S.plan.length && S.plan[S.events.length].at <= el) { const ev = { ...S.plan[S.events.length] }; S.events.push(ev); fired.push(ev); }
+  } else while (S.events.length < S.schedule.length && S.schedule[S.events.length] <= el) {
     const at = S.schedule[S.events.length];
     const ev = { ...makeEvent(S.cfg), at }; // 'at' = tiempo de carrera
     S.events.push(ev); fired.push(ev);
@@ -108,19 +119,22 @@ function alarm() {
     }
   } catch (e) { /* sin audio */ }
 }
+// Misma etiqueta que el aviso push (sw.js) para que nunca salgan dos notificaciones del mismo evento.
+const evTag = ev => ev.id && S && S.sync && S.sync.code ? 'ev-' + S.sync.code + '-' + ev.id : 'eventos-' + (S ? S.startTs : 0) + '-' + ev.at + '-' + (ev.n || 1);
 async function notify(ev) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.ready, tag = evTag(ev);
+    if (ev.id && reg.getNotifications && (await reg.getNotifications({ tag })).length) return; // ya avisado por push
     await reg.showNotification((ev.kind === 'pinchazos' ? '🛞 ' : ev.kind === 'clima' ? '❄ ' : '⚠ ') + ev.text, { body: 'Tiempo de rally ' + fmt(ev.at), icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png', tag: 'eventos-' + (S ? S.startTs : 0) + '-' + ev.at + '-' + (ev.n || 1), renotify: true, requireInteraction: true, vibrate: [400, 150, 400, 150, 800] });
+      badge: 'icons/icon-192.png', tag, renotify: true, requireInteraction: true, vibrate: [400, 150, 400, 150, 800] });
   } catch (e) { /* ignore */ }
 }
 function alertEvents(evs) {
   if (!evs.length) return;
   alarm();
   if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 800]);
-  notify(evs.length > 1 ? { text: evs.length + ' eventos: ' + evs.map(e => e.text).join(', '), at: evs.at(-1).at, n: evs.length } : evs[0]);
+  notify(evs.length > 1 ? { text: evs.length + ' eventos: ' + evs.map(e => e.text).join(', '), at: evs.at(-1).at, n: evs.length, id: evs.at(-1).id } : evs[0]);
   const c = $('#current'); c.classList.remove('alert'); void c.offsetWidth; c.classList.add('alert');
 }
 async function setWake(on) {
@@ -129,6 +143,151 @@ async function setWake(on) {
     else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
   } catch (e) { $('#wakeToggle').checked = false; }
 }
+
+// ===== 2.0.0: avisos push y rally compartido (servidor Cloudflare) =====
+// Dirección del servidor: <meta name="push-api"> (vacía = sin servidor, todo local como en 1.x). Las pruebas la cambian con localStorage.
+const API_LS = localStorage.getItem('eventos.api');
+const API = (API_LS === 'off' ? '' : (API_LS || (document.querySelector('meta[name=push-api]') || {}).content || '')).replace(/\/$/, '');
+const PUSH_STORE = 'eventos.push.v1', FIN_STORE = 'eventos.finish.v1';
+const pushOn = () => localStorage.getItem(PUSH_STORE) !== '0'; // «Avisos con pantalla bloqueada»: activado por defecto
+const fmtCode = c => c ? c.slice(0, 3) + '-' + c.slice(3) : '';
+async function api(path, body, timeout = 8000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeout), t0 = Date.now();
+  try {
+    const r = await fetch(API + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal, keepalive: path.endsWith('/finish') } : { signal: ctl.signal, cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (Number.isFinite(j.serverNow)) j.off = j.serverNow - (t0 + Date.now()) / 2; // diferencia de reloj servidor − este dispositivo
+    return { status: r.status, j };
+  } catch { return { status: 0, j: {} }; } finally { clearTimeout(t); }
+}
+const urlB64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+// Suscripción push de este dispositivo (null si no hay permiso, interruptor apagado o el navegador no lo admite).
+// Nunca bloquea el rally: si el navegador tarda en suscribirse, se sigue sin push (con alarma local).
+const getSub = () => Promise.race([getSub0(), new Promise(r => setTimeout(() => r(null), 8000))]);
+async function getSub0() {
+  if (!API || !pushOn() || !('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const { j } = await api('/vapid'); if (!j.key) return null;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(j.key) });
+    }
+    return sub.toJSON();
+  } catch { return null; }
+}
+// Copia el estado del servidor (reloj del servidor → reloj de este dispositivo).
+function adopt(st) {
+  const off = st.off || 0, sy = S.sync;
+  sy.off = off; S.startTs = st.startTs - off; S.pausedTotal = st.pausedTotal; S.pausedAt = st.pausedAt == null ? null : st.pausedAt - off;
+}
+async function hostCreate() {
+  if (!S || !S.sync || S.sync.role !== 'host' || S.sync.code || S.finished || !API || hostCreate.busy) return;
+  hostCreate.busy = true;
+  try {
+    const sub = await getSub();
+    const { status, j } = await api('/rally', { durationMs: S.durationMs, elapsedMs: raceElapsed(), cfg: S.cfg, events: S.plan, sub });
+    if (!S || !S.sync || S.sync.role !== 'host' || S.sync.code) return;
+    if (status === 200 && j.code) {
+      const paused = S.pausedAt; S.sync = { role: 'host', code: j.code, token: j.token, off: j.off, pending: [], status: 'ok', subOk: !!sub };
+      // conservar el tiempo local (el servidor empezó al recibir la petición) y comunicar una pausa hecha mientras tanto
+      if (paused) S.sync.pending.push({ act: 'pause', at: Date.now() + j.off });
+      save(); flush();
+    } else { S.sync.status = 'local'; save(); }
+  } finally { hostCreate.busy = false; render(); }
+}
+// Pausa / reanudar / finalizar del creador: se aplican al momento y se envían en orden (con reintento si no hay conexión).
+function queue(act) {
+  if (!S || !S.sync || S.sync.role !== 'host') return;
+  if (!S.sync.code) return hostCreate(); // aún sin código: se enviará el estado al crearlo
+  S.sync.pending = (S.sync.pending || []).concat({ act, at: Date.now() + (S.sync.off || 0) }); save(); flush();
+}
+async function flush() {
+  const sy = S && S.sync; if (!sy || !sy.code || flush.busy || !(sy.pending || []).length) return;
+  flush.busy = true;
+  try {
+    while (S && S.sync === sy && sy.pending.length) {
+      const op = sy.pending[0], { status, j } = await api(`/rally/${sy.code}/${op.act}`, { token: sy.token, at: op.at });
+      if (status === 200) { sy.pending.shift(); sy.status = 'ok'; if (S.sync === sy && !sy.pending.length) adopt(j); }
+      else if (status === 404 || status === 403) { sy.pending = []; sy.status = 'local'; } // caducado en el servidor: seguir solo en local
+      else { sy.status = 'offline'; break; }
+      save();
+    }
+  } finally { flush.busy = false; render(); }
+}
+// Finalizar: se borra en el servidor. Si no hay conexión, se recuerda y se reintenta al volver.
+function finishRemote(sy) {
+  if (!sy || !API) return;
+  if (sy.role === 'guest') { getSub().then(sub => sub && api(`/rally/${sy.code}/leave`, { sub })); return; }
+  if (!sy.code) return;
+  localStorage.setItem(FIN_STORE, JSON.stringify({ code: sy.code, token: sy.token }));
+  retryFinish();
+}
+async function retryFinish() {
+  let f; try { f = JSON.parse(localStorage.getItem(FIN_STORE)); } catch {} if (!f || !API) return;
+  const { status } = await api(`/rally/${f.code}/finish`, { token: f.token });
+  if (status === 200 || status === 404 || status === 403) localStorage.removeItem(FIN_STORE);
+}
+// Invitado: unirse con el código (solo ver; no puede pausar ni finalizar).
+async function joinRally(raw) {
+  const code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) return 'El código tiene 6 letras o números (sin O, 0, I ni 1).';
+  if (!API) return 'Rallies compartidos no disponibles en esta versión.';
+  if ('Notification' in window && Notification.permission === 'default' && pushOn()) await Notification.requestPermission().catch(() => {});
+  const sub = await getSub();
+  const { status, j } = await api(`/rally/${code}/join`, { sub });
+  if (status === 0) return 'Sin conexión: hace falta internet para unirse a un rally.';
+  if (status === 404) return 'No existe ningún rally con ese código (o ya ha terminado).';
+  if (status !== 200 && status !== 429) return 'No se pudo unir al rally. Inténtalo de nuevo.';
+  const cfg = { ...j.cfg, durationMs: j.durationMs };
+  S = { cfg, startTs: 0, durationMs: j.durationMs, pausedTotal: 0, pausedAt: null, events: [], schedule: j.events.map(e => e.at), plan: j.events,
+        finished: false, sync: { role: 'guest', code, off: 0, status: 'ok', subOk: !!sub && status === 200, full: status === 429 } };
+  adopt(j);
+  // lo que ya pasó antes de unirse aparece en el historial, sin alarma
+  const el = raceElapsed(); while (S.events.length < S.plan.length && S.plan[S.events.length].at <= el) S.events.push({ ...S.plan[S.events.length] });
+  save(); return '';
+}
+async function pollGuest() {
+  const sy = S && S.sync; if (!sy || sy.role !== 'guest' || S.finished || pollGuest.busy) return;
+  pollGuest.busy = true;
+  try {
+    const { status, j } = await api(`/rally/${sy.code}`);
+    if (!S || S.sync !== sy) return;
+    if (status === 200) { adopt(j); sy.status = 'ok'; }
+    else if (status === 404) { S.finished = true; sy.status = 'gone'; } // el organizador lo ha finalizado
+    else sy.status = 'offline';
+    save(); render();
+  } finally { pollGuest.busy = false; }
+}
+// Al abrir la app: renovar la suscripción (iOS puede perderla) y volver a darla de alta en el rally.
+async function resubscribe() {
+  const sy = S && S.sync; if (!sy || !sy.code || S.finished) return;
+  const sub = await getSub();
+  if (!S || S.sync !== sy) return;
+  if (sub) { const { status, j } = await api(`/rally/${sy.code}/join`, { sub }); if (status === 200) { sy.subOk = true; if (sy.role === 'guest') adopt(j); } else if (status === 429) sy.full = true; }
+  else sy.subOk = false;
+  save(); render();
+}
+async function setPush(on) {
+  localStorage.setItem(PUSH_STORE, on ? '1' : '0');
+  for (const id of ['#pushToggle', '#pushToggleRace']) $(id).checked = on;
+  const sy = S && S.sync;
+  if (on) { if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission().catch(() => {}); resubscribe(); }
+  else if (sy && sy.code) { const sub = await getSubRaw(); if (sub) api(`/rally/${sy.code}/leave`, { sub }); sy.subOk = false; save(); }
+  render();
+}
+async function getSubRaw() { try { const s = await (await navigator.serviceWorker.ready).pushManager.getSubscription(); return s && s.toJSON(); } catch { return null; } }
+function syncNote() {
+  const sy = S && S.sync;
+  if (!S || !sy || !API) return '';
+  if (sy.status === 'gone') return 'El organizador ha finalizado el rally.';
+  if (sy.status === 'local') return '⚠️ Sin conexión con el servidor de avisos: este rally funciona solo en este dispositivo y los avisos solo llegan con la app abierta (alarma local).';
+  if (sy.status === 'offline') return sy.role === 'host' ? '⚠️ Sin conexión: la pausa o reanudación se enviará al recuperar internet. Mientras, los avisos con pantalla bloqueada pueden llegar a destiempo.' : '⚠️ Sin conexión: no se puede comprobar si el organizador ha pausado el rally.';
+  if (sy.status === 'pending') return 'Conectando con el servidor de avisos…';
+  if (sy.full) return 'Este rally ya tiene el máximo de 10 dispositivos con avisos: aquí solo sonará con la app abierta.';
+  return '';
+}
+const pushActive = () => !!(S && S.sync && S.sync.code && S.sync.subOk && pushOn() && ['ok', 'offline'].includes(S.sync.status) && !S.finished);
 
 // ===== UI =====
 const $ = s => document.querySelector(s);
@@ -187,11 +346,14 @@ function renderNotif() {
 // ===== Atrás / cerrar en la pantalla de carrera =====
 function ensureRaceState() { if (S && !(history.state && (history.state.race || history.state.ajustes || history.state.ayuda))) history.pushState({ race: true }, ''); }
 function endRace() {
+  finishRemote(S && S.sync);
   S = null; save(); if (wakeLock) setWake(false); $('#wakeToggle').checked = false;
   if (history.state && history.state.race) history.back();
   render();
 }
-const askEnd = () => { if (confirm('¿Finalizar el rally?')) { endRace(); return true; } return false; };
+const isGuest = () => !!(S && S.sync && S.sync.role === 'guest');
+const endQ = () => isGuest() ? '¿Salir del rally? (seguirá en los demás dispositivos)' : '¿Finalizar el rally?';
+const askEnd = () => { if (S && S.finished && isGuest()) { endRace(); return true; } if (confirm(endQ())) { endRace(); return true; } return false; };
 function show(scr) { document.body.dataset.screen = scr; $('#setup').classList.toggle('hidden', scr !== 'setup'); $('#race').classList.toggle('hidden', scr !== 'race'); }
 // Solo escribe en el DOM si cambia (evita que la región viva se anuncie cada segundo).
 function setText(el, t) { if (el.textContent !== t) el.textContent = t; }
@@ -208,12 +370,21 @@ function render() {
   $('#pausedTag').classList.toggle('hidden', !S.pausedAt || S.finished);
   $('#pauseBtn').textContent = S.pausedAt ? 'Reanudar' : 'Pausa';
   $('#pauseBtn').disabled = S.finished;
+  const sy = S.sync || {}, guest = sy.role === 'guest';
+  $('#codeBox').classList.toggle('hidden', !sy.code);
+  $('#codeVal').textContent = fmtCode(sy.code);
+  $('#codeHost').classList.toggle('hidden', guest); $('#codeGuest').classList.toggle('hidden', !guest);
+  $('#shareBtn').classList.toggle('hidden', guest || S.finished);
+  $('#endBtn').textContent = guest ? 'Salir del rally' : 'Finalizar rally';
+  $('#raceClose').setAttribute('aria-label', guest ? 'Salir del rally' : 'Cerrar rally');
+  const sn = syncNote(); setText($('#syncNote'), sn); $('#syncNote').classList.toggle('hidden', !sn);
+  const pa = pushActive(); $('#bgWarn').classList.toggle('hidden', pa); $('#pushOk').classList.toggle('hidden', !pa);
   const last = S.events.at(-1);
   setHTML($('#current .cicon'), ic(S.finished ? 'finish' : last ? last.icon : 'road'));
   setText($('#current .ctext'), S.finished ? 'Rally terminado' : last ? last.text : 'Tramos despejados');
   setText($('#current .ctime'), last && !S.finished ? 'a las ' + fmt(last.at) + ' de rally' : '');
   $('#newBtn').classList.toggle('hidden', !S.finished);
-  $('#pauseBtn').classList.toggle('hidden', !!S.finished);
+  $('#pauseBtn').classList.toggle('hidden', !!S.finished || guest); // invitados: solo ver
   $('#zeroNote').classList.toggle('hidden', !(S.schedule && S.schedule.length === 0));
   const n = S.cfg.tramos || 3, tg = $('#tramos');
   tg.style.gridTemplateColumns = `repeat(${n},1fr)`;
@@ -234,6 +405,7 @@ function render() {
 }
 function tick() { alertEvents(catchUp()); render(); }
 
+let outside = () => false;
 function init() {
   document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
     if (e.target.tagName !== 'BUTTON') return;
@@ -251,20 +423,45 @@ function init() {
     if (ms <= 0) return alert('Indica una duración');
     if (ms > MAX_MS) return alert('La duración máxima es 48 h 00 min');
     alarm(); // desbloquea el audio con un gesto del usuario
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(render);
+    const perm = 'Notification' in window && Notification.permission === 'default' ? Notification.requestPermission().catch(() => {}) : Promise.resolve();
     startRace({ durationMs: ms, type: segVal('type'), freq: segVal('freq'), intensity: segVal('intensity'), tramos: +segVal('tramos') });
+    if (!API) S.sync = null;
     ensureRaceState(); render();
+    Promise.resolve(perm).then(() => { render(); hostCreate(); });
   };
-  $('#pauseBtn').onclick = () => { S.pausedAt ? resume() : pause(); render(); };
+  $('#pauseBtn').onclick = () => { if (isGuest()) return; S.pausedAt ? (resume(), queue('resume')) : (pause(), queue('pause')); render(); };
   $('#endBtn').onclick = $('#raceClose').onclick = askEnd;
   $('#newBtn').onclick = endRace; // rally terminado: volver a la configuración sin preguntar
   $('#wakeToggle').onchange = e => setWake(e.target.checked);
-  $('#notifBtn').onclick = () => Notification.requestPermission().then(render);
+  $('#notifBtn').onclick = () => Notification.requestPermission().then(() => { render(); resubscribe(); });
+  // ---- rally compartido ----
+  for (const id of ['#pushToggle', '#pushToggleRace']) { $(id).checked = pushOn(); $(id).onchange = e => setPush(e.target.checked); }
+  $('#joinBtn').classList.toggle('hidden', !API); $('#pushRow').classList.toggle('hidden', !API); $('#pushRowRace').classList.toggle('hidden', !API); $('#pushHint').classList.toggle('hidden', !API);
+  const closeJoin = () => { if (history.state && history.state.unirse) history.back(); else if ($('#join').open) $('#join').close(); };
+  $('#joinBtn').onclick = () => { if (S) return; $('#joinErr').textContent = ''; $('#joinCode').value = ''; $('#join').showModal(); history.pushState({ unirse: true }, ''); };
+  $('#joinClose').onclick = $('#joinCancel').onclick = closeJoin;
+  $('#join').addEventListener('cancel', e => { e.preventDefault(); closeJoin(); });
+  $('#join').addEventListener('click', e => { if (outside(e)) closeJoin(); });
+  $('#joinCode').addEventListener('input', e => { const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); e.target.value = v.length > 3 ? v.slice(0, 3) + '-' + v.slice(3) : v; });
+  $('#joinForm').onsubmit = async e => {
+    e.preventDefault(); alarm(); // gesto del usuario: activa el audio de la alarma fuerte
+    const b = $('#joinGo'); b.disabled = true; $('#joinErr').textContent = 'Conectando…';
+    const err = await joinRally($('#joinCode').value); b.disabled = false;
+    $('#joinErr').textContent = err; if (err) return;
+    $('#join').close(); if (history.state && history.state.unirse) history.replaceState({ race: true }, '');
+    ensureRaceState(); render();
+  };
+  $('#shareBtn').onclick = async () => {
+    const c = fmtCode(S && S.sync && S.sync.code), t = `Código del rally de Eventos: ${c}`;
+    try { if (navigator.share) return await navigator.share({ text: t }); await navigator.clipboard.writeText(c); $('#shareBtn').textContent = 'Copiado'; setTimeout(() => $('#shareBtn').textContent = 'Compartir código', 1500); } catch {}
+  };
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'push') tick(); }); // aviso push con la app abierta
+  window.addEventListener('online', () => { flush(); retryFinish(); hostCreate(); pollGuest(); });
   $('#helpClose').onclick = () => $('#help').close();
   $('#helpBtn').onclick = () => { $('#help').showModal(); history.pushState({ ayuda: true }, ''); };
   $('#help').addEventListener('close', () => { if (history.state && history.state.ayuda) history.back(); });
   // clic en el fondo oscuro cierra los diálogos
-  const outside = e => { const r = e.currentTarget.getBoundingClientRect(); return e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom); };
+  outside = e => { const r = e.currentTarget.getBoundingClientRect(); return e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom); };
   $('#help').addEventListener('click', e => { if (outside(e)) $('#help').close(); });
   $('#settings').addEventListener('click', e => { if (outside(e)) closeSettings(); });
     // Enteros fuera de rango se ajustan al salir del campo; los decimales no se redondean (se avisa al empezar).
@@ -277,32 +474,38 @@ function init() {
   $('#settings').addEventListener('cancel', e => { e.preventDefault(); closeSettings(); }); // tecla Esc
   window.addEventListener('popstate', () => {
     let wasOpen = false;
-    for (const d of ['#settings', '#help']) if ($(d).open) { $(d).close(); wasOpen = true; }
+    for (const d of ['#settings', '#help', '#join']) if ($(d).open) { $(d).close(); wasOpen = true; }
     if (wasOpen || !S) return; // Atrás cerró un diálogo, o no hay rally
     if (history.state && history.state.race) return;
     // Atrás en la pantalla de carrera: preguntar si se finaliza
-    if (confirm('¿Finalizar el rally?')) { S = null; save(); if (wakeLock) setWake(false); $('#wakeToggle').checked = false; render(); }
+    if (S.finished && isGuest()) { finishRemote(S.sync); S = null; save(); render(); }
+    else if (confirm(endQ())) { finishRemote(S.sync); S = null; save(); if (wakeLock) setWake(false); $('#wakeToggle').checked = false; render(); }
     else history.pushState({ race: true }, '');
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') { tick(); if ($('#wakeToggle').checked && S && !S.finished) setWake(true); }
+    if (document.visibilityState === 'visible') { tick(); resubscribe(); pollGuest(); flush(); if ($('#wakeToggle').checked && S && !S.finished) setWake(true); }
   });
   S = load();
   // Tras recargar con un diálogo abierto, history.state puede ser «ajustes»/«ayuda» sin diálogo: normalizar.
-  if (history.state && (history.state.ajustes || history.state.ayuda)) history.back(); // vuelve a la entrada anterior (rally o inicio) sin preguntar
+  if (history.state && (history.state.ajustes || history.state.ayuda || history.state.unirse)) history.back(); // vuelve a la entrada anterior (rally o inicio) sin preguntar
   ensureRaceState();
   tick();
   setInterval(tick, 1000);
+  // sincronización: invitados consultan el estado cada 10 s; el creador reintenta lo pendiente cada 15 s
+  setInterval(() => { if (document.visibilityState === 'visible') pollGuest(); }, +(localStorage.getItem('eventos.poll') || 10000));
+  setInterval(() => { flush(); retryFinish(); if (S && S.sync && S.sync.status === 'local' && !S.sync.code && navigator.onLine) hostCreate(); }, 15000);
+  if (S && S.sync && S.sync.status === 'pending') hostCreate();
+  resubscribe(); pollGuest(); flush(); retryFinish();
   if ('serviceWorker' in navigator) {
     // Al activarse un SW nuevo (skipWaiting + clients.claim) recargamos una vez para usar los archivos nuevos.
     const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
     // No recargar con un diálogo abierto (se perderían cambios sin guardar): esperar a que se cierre.
-    const reloadSoon = () => { if (reloaded) return; if ($('#settings').open || $('#help').open) return setTimeout(reloadSoon, 1000); reloaded = true; location.reload(); };
+    const reloadSoon = () => { if (reloaded) return; if ($('#settings').open || $('#help').open || $('#join').open) return setTimeout(reloadSoon, 1000); reloaded = true; location.reload(); };
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadSoon(); });
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
   }
 }
-window.Eventos = { get FREQ() { return FREQ; }, FREQ_DEFAULT, validFreq, esc, notifStatus, freqRange, schedule, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume };
+window.Eventos = { get FREQ() { return FREQ; }, FREQ_DEFAULT, validFreq, esc, notifStatus, freqRange, schedule, makeEvent, get state() { return S; }, raceElapsed, catchUp, pause, resume, get API() { return API; }, fmtCode, pushActive };
 init();
 
 // ---------- sin zoom (pellizco y doble toque) ----------

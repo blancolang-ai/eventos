@@ -1,9 +1,9 @@
 #!/bin/sh
-# Publica una nueva versión (semver; ./deploy.sh [patch|minor|major], por defecto patch): comprueba, prueba, sube la versión de caché y hace commit SOLO de los archivos de versión.
+# Publica una nueva versión (semver; ./deploy.sh [patch|minor|major|none], por defecto patch; 'none' publica la versión ya fijada en sw.js sin subirla): comprueba, prueba, sube la versión de caché y hace commit SOLO de los archivos de versión.
 # Los cambios de código deben estar ya confirmados (commit) antes de desplegar.
 set -eu
 bump=${1:-patch}
-case "$bump" in patch|minor|major) ;; *) echo "Uso: ./deploy.sh [patch|minor|major]" >&2; exit 1 ;; esac
+case "$bump" in patch|minor|major|none) ;; *) echo "Uso: ./deploy.sh [patch|minor|major|none]" >&2; exit 1 ;; esac
 cd "$(dirname "$0")"
 branch=$(git rev-parse --abbrev-ref HEAD)
 [ "$branch" = main ] || { echo "Rama '$branch': despliega desde main" >&2; exit 1; }
@@ -17,6 +17,13 @@ if python3 -c "import socket,sys;s=socket.socket();sys.exit(0 if s.connect_ex(('
 npx playwright test
 v=$(sed -n "s/.*'eventos-v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)'.*/\1/p" sw.js)
 [ -n "$v" ] || { echo "No encuentro la versión X.Y.Z en sw.js" >&2; exit 1; }
+if [ "$bump" = none ]; then
+  grep -q "app.js?v=$v\"" index.html && grep -q "content=\"$v\"" index.html && grep -q "^Versión: $v " README.md || { echo "index.html/README.md no coinciden con v$v" >&2; exit 1; }
+  git rev-parse -q --verify "refs/tags/v$v" >/dev/null && { echo "La etiqueta v$v ya existe" >&2; exit 1; }
+  git tag -a "v$v" -m "Versión $v"
+  git push origin main "v$v"
+  echo "Publicada v$v (sin subir versión)"; exit 0
+fi
 IFS=. read -r ma mi pa <<EOV
 $v
 EOV
